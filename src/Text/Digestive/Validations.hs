@@ -1,10 +1,11 @@
 module Text.Digestive.Validations
-    ( f
-    , g
-    ) where
+  ( module Text.Digestive.Validations.PhoneNumber
+  , module Text.Digestive.Validations.Types
+  , module Text.Digestive.Validations.Parsers
+  , module Text.Digestive.Validations.Localization
+  ) where
 
-f :: Bool
-f = False
-
-g :: Bool
-g = False
+import Text.Digestive.Validations.PhoneNumber
+import Text.Digestive.Validations.Types
+import Text.Digestive.Validations.Parsers
+import Text.Digestive.Validations.Localization

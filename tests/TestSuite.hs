@@ -1,29 +1,15 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main
     ( main
     ) where
 
-import Text.Digestive.Validations
-
 import Test.Framework (defaultMain)
-import           Test.Framework                     (Test, testGroup)
-import           Test.Framework.Providers.HUnit     (testCase)
-import           Test.HUnit                         ((@=?))
 
+import qualified Text.Digestive.Validations.Parsers.Tests
 
 main :: IO ()
 main = defaultMain
-    [ initTests
+    [ Text.Digestive.Validations.Parsers.Tests.localPhoneNumberTests
+    , Text.Digestive.Validations.Parsers.Tests.phoneNumberPrecedenceTests
+    , Text.Digestive.Validations.Parsers.Tests.phoneNumberWithAreaCodeTests
+    , Text.Digestive.Validations.Parsers.Tests.phoneNumberWithAreaCodeAndCountryCodeTests
     ]
-
-initTests :: Test
-initTests = testGroup "Text.Digestive.Validations"
-    [ testCase "f" $
-        True @=? f
-
-    , testCase "g" $
-        False @=? g
-
-    ]
-
