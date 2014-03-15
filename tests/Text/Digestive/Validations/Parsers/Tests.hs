@@ -92,4 +92,8 @@ phoneNumberWithAreaCodeAndCountryCodeTests = testGroup "Text.Digestive.Parsers.P
     , testPhoneParser "extended country code" "1 212 (313) - 781 4218" F.phoneNumberWithAreaCodeAndExtendedCountryCode
 
     , testPhoneParser "can parse with extension" "21 313 781-4218x1111" F.phoneNumberWithAreaCodeAndCountryCodeAndExtension
+
+    , testPhoneParser "can parse with extension without seperator" "21 313 781 4218 1111" F.phoneNumberWithAreaCodeAndCountryCodeAndExtension
+
+    , testPhoneParser "can parse one digit extension without seperator" "1 222 222 2222 1" F.phoneNumberWithAreaCodeAndCountryCodeAndOneDigitExtension
     ] 

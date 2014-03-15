@@ -8,6 +8,7 @@ module Text.Digestive.Validations.Parsers.Fixtures
     , phoneNumberWithAreaCodeAndCountryCode
     , phoneNumberWithAreaCodeAndExtendedCountryCode
     , phoneNumberWithAreaCodeAndCountryCodeAndExtension
+    , phoneNumberWithAreaCodeAndCountryCodeAndOneDigitExtension
     , sevenDigitNumber
     , eightDigitNumber
     , nineDigitNumber
@@ -38,6 +39,9 @@ phoneNumberWithAreaCodeAndExtendedCountryCode = emptyPhoneNumber {_countryCode =
 
 phoneNumberWithAreaCodeAndCountryCodeAndExtension :: PhoneNumber
 phoneNumberWithAreaCodeAndCountryCodeAndExtension = emptyPhoneNumber {_countryCode = "21", _areaCode = "313", _exchange = "781", _suffix = "4218", _extension="1111"}
+
+phoneNumberWithAreaCodeAndCountryCodeAndOneDigitExtension :: PhoneNumber
+phoneNumberWithAreaCodeAndCountryCodeAndOneDigitExtension = emptyPhoneNumber {_countryCode = "1", _areaCode = "222", _exchange = "222", _suffix = "2222", _extension="1"}
 
 phoneNumberWithAreaCodeAndExtension :: PhoneNumber
 phoneNumberWithAreaCodeAndExtension = emptyPhoneNumber {_areaCode = "313", _exchange = "781", _suffix = "4218", _extension = "1111"}
