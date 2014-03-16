@@ -7,17 +7,13 @@ module Text.Digestive.Validations.Parsers.Tests
     , phoneNumberWithAreaCodeAndCountryCodeTests
     ) where
 
-import Text.Digestive.Validations.Parsers
 import qualified Text.Digestive.Validations.Parsers.Fixtures as F
 import Text.Digestive.Validations.Parsers.Helpers (testPhoneParser, testPhoneParserDoesNotParse)
-import Test.Framework (defaultMain)
 import Test.Framework                     (Test, testGroup)
-import Test.Framework.Providers.HUnit     (testCase)
-import Test.HUnit                         ((@=?))
 
 
 phoneNumberPrecedenceTests :: Test
-phoneNumberPrecedenceTests = testGroup "Text.Digestive.Parsers.PhoneNumber: digit precedence"
+phoneNumberPrecedenceTests = testGroup "Text.Digestive.Validations.Parsers.PhoneNumber: digit precedence"
     [ testPhoneParser "seven digit number" "1111111" F.sevenDigitNumber
 
     , testPhoneParser "eight digit number" "11111111" F.eightDigitNumber
@@ -38,7 +34,7 @@ phoneNumberPrecedenceTests = testGroup "Text.Digestive.Parsers.PhoneNumber: digi
     ]
 
 localPhoneNumberTests :: Test
-localPhoneNumberTests = testGroup "Text.Digestive.Parsers.PhoneNumber: local number"
+localPhoneNumberTests = testGroup "Text.Digestive.Validations.Parsers.PhoneNumber: local number"
     [ testPhoneParser "simplest case" "781-4218" F.localPhoneNumber
 
     , testPhoneParser "no seperator" "781 4218" F.localPhoneNumber
@@ -47,17 +43,13 @@ localPhoneNumberTests = testGroup "Text.Digestive.Parsers.PhoneNumber: local num
 
     , testPhoneParser "number of spaces between has no effect" "781    4218" F.localPhoneNumber
 
-    , testPhoneParserDoesNotParse "does not parse only 6 digits" "781 421"
     
     , testPhoneParser "can parse with extension" "781-4218x1111" F.localPhoneNumberWithExtension
-
-    , testPhoneParser "can parse with extension no seperator" "781 4218 1111" F.localPhoneNumberWithExtension
-
 
     ]
 
 phoneNumberWithAreaCodeTests :: Test
-phoneNumberWithAreaCodeTests = testGroup "Text.Digestive.Parsers.PhoneNumber: phone number with area code"
+phoneNumberWithAreaCodeTests = testGroup "Text.Digestive.Validations.Parsers.PhoneNumber: phone number with area code"
     [ testPhoneParser "simplest case" "(313)781-4218" F.phoneNumberWithAreaCode
 
     , testPhoneParser "no seperator" "(313)781 4218" F.phoneNumberWithAreaCode
@@ -93,7 +85,4 @@ phoneNumberWithAreaCodeAndCountryCodeTests = testGroup "Text.Digestive.Parsers.P
 
     , testPhoneParser "can parse with extension" "21 313 781-4218x1111" F.phoneNumberWithAreaCodeAndCountryCodeAndExtension
 
-    , testPhoneParser "can parse with extension without seperator" "21 313 781 4218 1111" F.phoneNumberWithAreaCodeAndCountryCodeAndExtension
-
-    , testPhoneParser "can parse one digit extension without seperator" "1 222 222 2222 1" F.phoneNumberWithAreaCodeAndCountryCodeAndOneDigitExtension
     ] 

@@ -4,20 +4,25 @@ module Text.Digestive.Validations.Parsers.Helpers
     ) where
 
 import Text.Digestive.Validations.Parsers
-import Text.Parsec.Prim (runParser)
 import Data.Text(Text)
+import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber)
 
-import Test.Framework                     (Test, testGroup)
+import Test.Framework                     (Test, TestName)
 import Test.Framework.Providers.HUnit     (testCase)
 import Test.HUnit                         ((@=?), assertFailure, assertBool)
 
 
 
+
+testPhoneParser :: TestName -> Text -> PhoneNumber -> Test
 testPhoneParser = testParser runPhoneNumberParser
+
+testParser :: (Show e) => (Text -> Either e PhoneNumber) -> TestName -> Text -> PhoneNumber -> Test
 testParser parseRunner name input expected = testCase name $ case (parseRunner input) of
   Right x -> expected @=? x
   Left  e -> assertFailure (show e)
 
+testPhoneParserDoesNotParse :: TestName -> Text -> Test
 testPhoneParserDoesNotParse name input = testCase name $ case(runPhoneNumberParser input) of
-  Left e -> assertBool "" True
+  Left _ -> assertBool "" True
   Right x -> assertFailure $ "input was incorrectly successfully parsed" ++ show x
