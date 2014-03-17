@@ -4,6 +4,7 @@ module Text.Digestive.Validations.Parsers.PhoneNumber
     ( phoneNumberParser
     , runPhoneNumberParser
     , tokenizePhoneNumber
+    , PhoneNumberParser
     )
     where
 
@@ -46,7 +47,11 @@ runPhoneNumberParser ::  Text -> Either ParseError PhoneNumber
 runPhoneNumberParser input = runParser phoneNumberParser (mempty :: PhoneNumber ) "" (tokenizePhoneNumber input)
 
 phoneGrammar :: Monad m => PhoneNumberParser m ()
-phoneGrammar = try (exchange >> noMoreImportantTokens) <|>
+phoneGrammar = 
+               try (countryCode >> openingAreaCode >> noMoreImportantTokens) <|>
+               try (openingAreaCode >> noMoreImportantTokens) <|>
+  
+               try (exchange >> noMoreImportantTokens) <|>
                try (localNumber >> noMoreImportantTokens) <|>
                try (fullLocalNumber >> qualifiedExtension >> noMoreImportantTokens) <|>
 
@@ -71,11 +76,8 @@ phoneGrammar = try (exchange >> noMoreImportantTokens) <|>
                try (fourDigitCountryCode >> areaCode >> fullLocalNumber >> extension >> noMoreImportantTokens) <|>
 
                try (countryCode >> bracketedAreaCode >> fullLocalNumber >> extension >> noMoreImportantTokens) <|>
-               try (dashedCountryCode >> areaCode >> fullLocalNumber >> extension >> noMoreImportantTokens) <|>
+               try (dashedCountryCode >> areaCode >> fullLocalNumber >> extension >> noMoreImportantTokens)
 
-               --these two have absolutely no overlap with other rules, could be any precedence
-               try (countryCode >> openingAreaCode >> noMoreImportantTokens) <|>
-               try (openingAreaCode >> noMoreImportantTokens)
 
 
 exchange :: Monad m => PhoneNumberParser m ()

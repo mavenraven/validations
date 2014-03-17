@@ -13,6 +13,84 @@ Snap to provide out of the box internationalization.  It's based on the idea of
 , but without all the callbacks. Though this library is aimed at working
 digestive-functors, it should be reusable in other contexts as well.
 
+
+Currently Supported Parsers and Validators:
+-------------------------------------------
+
+phone numbers
+
+
+Planned Supported Parsers/ Domain Types
+-------------------------------------------
+
+ip v4 / v6 addresses
+
+gender
+
+sex
+
+ethnicity
+
+race
+
+disability
+
+social security numbers
+
+education
+
+profession
+
+credit card number
+
+bank account number
+
+routing number
+
+marital status
+
+email address
+
+http address
+
+zip code
+
+street address \[maybe not\]
+
+dates/times (in separate haskell-chronic package)
+
+currency
+
+common quantities (e.g. "5 meters")
+
+vin  / license \[probably not\]
+
+uuid
+
+coordinates
+
+
+Planned supported Validators
+----------------------------
+
+confirmations (e.g. email confirmation)
+
+localIpAddress
+
+various email validators
+
+currency in range, positive, etc.
+
+must accept (e.g. TOS)
+
+lengths
+
+uniqueness 
+
+unicode name (i.e. 専門家 is fine, but    😸 is not)
+
+
+
 Help
 ----
 
@@ -28,8 +106,8 @@ cabal install --enable-test
 
 Only phone numbers are working so far, so there is plenty to be worked on.
 Or, if you don't want to write code but know a foreign language, it would
-be great to add what you know to any needed localized strings. Thanks for
-any help!
+be great to add what you know to any needed localized strings. Or, if you
+can think of a useful to parse data type, file an issue! Thanks for any help!
 
 
 Related Projects
