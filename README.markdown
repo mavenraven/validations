@@ -89,6 +89,8 @@ uniqueness
 
 unicode name (i.e. 専門家 is fine, but    😸 is not)
 
+geohashing and distance (how exotic!)
+
 
 
 Help
