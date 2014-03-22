@@ -12,36 +12,35 @@ import Prelude hiding (null)
 import Text.Digestive.Validations.Parsers.PhoneNumber(runPhoneNumberParser)
 import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
 import Text.Digestive.Validations.Localization(LocalizedMessage, french, english, dutch, Message(..), message)
-import Text.Digestive.Types(Result(..))
 import Data.Text(null, Text)
 
 
-phoneNumber :: Text -> Result LocalizedMessage PhoneNumber
+phoneNumber :: Text -> Either LocalizedMessage PhoneNumber
 phoneNumber txt = case(runPhoneNumberParser txt) of
-  Right x -> Success x
-  Left  _ -> Error $ message
+  Right x -> Right x
+  Left  _ -> Left $ message
     [ Message english Nothing "Phone number is not valid."
     , Message dutch   Nothing "<insert dutch error sentence>."
     , Message french  Nothing "<insert french error sentence>."
     ]
 
 
-hasPhoneField :: (PhoneNumber -> Text) -> [Message] -> PhoneNumber -> Result LocalizedMessage PhoneNumber
+hasPhoneField :: (PhoneNumber -> Text) -> [Message] -> PhoneNumber -> Either LocalizedMessage PhoneNumber
 hasPhoneField accessor msg ph = case((null . accessor) ph) of
-  False -> Success ph
-  True  -> Error $ message msg
+  False -> Right ph
+  True  -> Left $ message msg
 
-hasAreaCode :: PhoneNumber -> Result LocalizedMessage PhoneNumber
+hasAreaCode :: PhoneNumber -> Either LocalizedMessage PhoneNumber
 hasAreaCode = hasPhoneField _areaCode  
   [ Message english (Just "should have an area code") "Phone number should have an area code."
   ]
 
-hasExtension :: PhoneNumber -> Result LocalizedMessage PhoneNumber
+hasExtension :: PhoneNumber -> Either LocalizedMessage PhoneNumber
 hasExtension = hasPhoneField _extension
   [ Message english (Just "should have an extension") "Phone number should have an extension."
   ]
 
-hasCountryCode :: PhoneNumber -> Result LocalizedMessage PhoneNumber
+hasCountryCode :: PhoneNumber -> Either LocalizedMessage PhoneNumber
 hasCountryCode = hasPhoneField _countryCode
   [ Message english (Just "should have a country code") "Phone number should have a country code."
   ]
