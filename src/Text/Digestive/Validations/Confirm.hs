@@ -1,20 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE FlexibleContexts        #-}
 
 
 module Text.Digestive.Validations.Confirm
---  ( phoneNumber
---  , hasAreaCode
---  , hasExtension
---  , hasCountryCode
---  ) 
+  ( posted
+  , contextValidate
+  , userValidation
+  ) 
     where
 
 import Control.Monad.State(MonadState, put, get, State, runState)
-import Text.Digestive.Validations.Internal.Lens(getter, setter, Lens, firstTuple)
+import Text.Digestive.Validations.Internal.Lens(getter, setter, Lens, firstTuple, lens)
 import Text.Digestive.Form(Form, validateM, text, (.:))
 import Text.Digestive.Types(Result(..))
+import qualified Text.Digestive.Validations.PhoneNumber as VPH
+import Text.Digestive.Validations.Types.PhoneNumber as TPH
 import Text.Digestive.Form
 import Text.Digestive.Form.Encoding
 import Text.Digestive.Types
@@ -24,69 +24,35 @@ import Debug.Trace
 import Control.Monad
 import Data.Monoid
 import Text.Digestive.View
---confirm :: (Monad m, Eq a) => Form Text m a -> Form Text m a -> Form Text m a
---confirm fm1 fm2 = (flip runState) False $
---
-id :: a -> a
-id = undefined
- 
+import Control.Arrow((>>>))
 
+newtype ContextualValidator v s a = ContextualValidator { getContextValidator :: State (View v, s) a}
 
---needsConfirmation :: (MonadState s m) => ((s,a) -> s) -> Form T.Text m a -> Form T.Text m a
-needsConfirmation f = validateM g 
- where g a = do {
-    s <- get;
-    put (f s a);
-    return (Error "no");
- }
-
---confirms :: (MonadState s m, Eq a) => (s -> a) -> Form T.Text m a -> Form T.Text m a 
-confirmsFor f = validateM g
-  where g a = do {
-    s <- get;
-    if ((f s) == a)
-       then return $ Success a
-       else return $ Error "not equal!"
-   }
-
-
-validateMForm :: (MonadState a m, Eq a) => Form Text m a -> Form Text m a -> Form Text m a
-validateMForm fm1 fm2 = ("hello" .: (flip validateM) fm1 (\x -> do
-                        put x
-                        return $ Success (x)))
-                     *> ("bye" .: (flip validateM) fm2 (\x -> do 
-                      s <- get
-                      if (x /= s)
-                         then return $ Error "bye"
-                         else return $ Success (x)))
-
-
-
-
-newtype ContextualValidator v a = ContextualValidator { getContextValidator :: State (View v) a}
-
-instance (Monoid v) => Monad (ContextualValidator v) where
+instance (Monoid s, Monoid v) => Monad (ContextualValidator s v) where
   return = ContextualValidator . return
   (ContextualValidator st) >>= f = ContextualValidator (st >>= \x -> getContextValidator (f x))
 
 
-getView = ContextualValidator  get
-putView v = ContextualValidator (put v)
+getView = ContextualValidator (fst <$> get)
+putView v = ContextualValidator (get >>= \(_,s) -> put (v,s))
 
+getState   = ContextualValidator (snd <$> get)
+putState s = ContextualValidator (get >>= \(v,_) -> put (v,s))
 
 type FieldName = Text
-validation :: (Monoid e) => a -> (a -> Result (FieldName, e) b) -> ContextualValidator e ()
+validation :: (Monoid e, Monoid s) => a -> (a -> Result (FieldName, e) b) -> ContextualValidator e s (Maybe b)
 validation a f = case (f a) of
-  Success x -> return ()
+  Success x -> return (Just x)
   Error   (fn, e) -> do
     view <- getView
     let path = absolutePath fn view
     let newErrors = (viewErrors view) <> [(path, e)]
     putView $ view {viewErrors = newErrors}
+    return Nothing
 
 
-runValidations :: View v -> ContextualValidator v () -> View v
-runValidations view cv = snd $ runState (getContextValidator cv) view
+runValidations :: (Monoid s) => View v -> ContextualValidator v s () -> (View v, s)
+runValidations view cv = snd $ runState (getContextValidator cv) (view, mempty)
 
 tupleToType3 :: (a,b,c) -> (a -> b -> c -> d) -> d
 tupleToType3 (a,b,c) constructor = constructor a b c
@@ -96,36 +62,91 @@ notEmpty x = case x of
   "" -> Error "is empty"
   _  -> Success x
 
-hello = "hello"
-helloConfirm = "helloConfirm"
-goodbye = "goodbye"
 
+
+set :: (Monoid s, Monoid v) => (forall f. (Functor f) => (a -> f a) -> s -> f s) -> (Maybe a) -> ContextualValidator v s ()
+set lns x = case x of
+    Just x' -> do
+      s <- getState 
+      putState (setter lns s x')
+    Nothing -> return ()
 
 attachTo validator fieldName = \x -> case (validator x) of
   Success x' -> Success x'
   Error  e   -> Error (fieldName, e)
 
-coolForm :: (Monad m) => Form Text m (Text,Text,Text)
-coolForm = (,,)
-  <$> hello        .: (text Nothing)
-  <*> helloConfirm .: (text Nothing)
-  <*> goodbye      .: (text Nothing)
+data User = User
+  { _firstName :: Text
+  , _lastName    :: Text
+  , _email       :: Text
+  , _phoneNumber :: TPH.PhoneNumber
+  } deriving Show
+
+
+class Empty e where
+  empty :: e
+
+
+instance Monoid User where
+  mempty = User { _firstName = "", _lastName = "", _email = "", _phoneNumber = mempty}
+  mappend = undefined
+
+firstName :: Lens Text User
+firstName = lens _firstName (\s a -> s {_firstName = a})
+lastName :: Lens Text User
+lastName  = lens _lastName (\s a -> s {_lastName = a})
+email :: Lens Text User
+email     = lens _email (\s a -> s {_email = a})
+phoneNumber :: Lens PhoneNumber User
+phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
+
+
+firstNameField     = "firstName"
+lastNameField      = "lastName"
+emailField         = "email"
+emailConfirmField  = "emailConfirm"
+phoneNumberField   = "phoneNumber"
+
+userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
+userForm = (,,,,)
+  <$> firstNameField    .: (text Nothing)
+  <*> lastNameField     .: (text Nothing)
+  <*> emailField        .: (text Nothing)
+  <*> emailConfirmField .: (text Nothing)
+  <*> phoneNumberField  .: (text Nothing)
 
 confirms a b = case (a == b) of
   True -> Success a
   False -> Error "fields do not match."
 
-coolValidator (f1,f2,f3) = do
-  validation f1 $
-    notEmpty      `attachTo` hello
-    >=>
-    (confirms f2) `attachTo` helloConfirm
 
-  validation f3 $
-    notEmpty      `attachTo` goodbye
-    >=>
-    (confirms f1) `attachTo` goodbye
+userValidation (f1,f2,f3,f4,f5) = do
+  validation f1 (
+      notEmpty `attachTo` firstNameField
+    )
+    >>= set firstName
 
+  validation f2 (
+      notEmpty `attachTo` lastNameField
+    ) 
+    >>= set lastName
+
+  validation f3 (
+      notEmpty        `attachTo` emailField
+      >=>
+      (f4 `confirms`) `attachTo` emailConfirmField
+    ) 
+    >>= set email
+
+  validation f5 (
+      notEmpty                                                      `attachTo` phoneNumberField
+      >=>
+      VPH.phoneNumber  >>> resultMapError (const "bad number")      `attachTo` phoneNumberField
+      >=> 
+      VPH.hasExtension >>> resultMapError (const "needs extension") `attachTo` phoneNumberField
+
+    ) 
+    >>= set phoneNumber
 
 
 
@@ -133,18 +154,23 @@ coolValidator (f1,f2,f3) = do
   addValidation helloConfirm x (\(y,z) -> case (z == y) of
     True -> Success (y,z)
     False -> Error "do not match")
+
     -}
 
 
 
-posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text))
-posted = postForm "f" coolForm $ testEnv [("f.hello", "hiz"), ("f.helloConfirm", "hi"), ("f.goodbye", "hi")]
+posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text,Text,Text))
+posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]
 
 
-contextValidate :: (Monad m, Monoid v) => m (View v, Maybe a) -> (a -> ContextualValidator v ()) -> m (View v, Maybe a)
+contextValidate :: (Monad m, Monoid v, Monoid s) => m (View v, Maybe a) -> (a -> ContextualValidator v s ()) -> m (View v, Maybe s)
 contextValidate view validator = view >>= \(v,x) -> case x of
-  Nothing -> return $ (v,x)
-  Just a  -> return (runValidations v (validator a), x)
+  Nothing -> return $ (v, Nothing)
+  Just a  -> do
+    let vs = runValidations v (validator a)
+    case (viewErrors (fst vs)) of
+      [] -> return $ (fst vs, Just (snd vs))
+      _  -> return $ (fst vs, Nothing)
 
 
 -- > <*> "smallEvenInteger" .: validate (notEmpty >=> integer >=> conditions [even, greaterThan 0, lessThanOrEq 100]) (text Nothing)
