@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Parsers.PhoneNumber
-    ( emailAddressParser
-    , runEmailAddressParser
-    , tokenizeEmailAddress
-    , EmailAddressParser
+module Validations.Parsers.PhoneNumber
+    ( phoneNumberParser
+    , runPhoneNumberParser
+    , tokenizePhoneNumber
+    , PhoneNumberParser
     )
     where
 
@@ -16,49 +16,20 @@ import Text.Parsec.Text()
 import Text.Parsec.Error (ParseError)
 import Data.Text(Text, singleton, filter)
 import Data.Monoid(mempty, (<>))
-import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
+import Validations.Types.PhoneNumber(PhoneNumber(..))
 
 
 type PhoneNumberParser m a = ParsecT Text (PhoneNumber) m a
 
---rfc 5322, http://tools.ietf.org/html/rfc5322
+digit :: String
+digit = ['0' .. '9']
 
+lbrace :: String
+lbrace = "({["
 
+rbrace :: String
+rbrace = ")}]"
 
-alpha = ['a' .. 'z'] <> ['A' .. 'Z']
-digit = ['0' .. '9'] 
-
-symbol = "!" <> "#" <>
-         "$" <> "%" <>
-         "&" <> "'" <>
-         "*" <> "+" <>
-         "_" <> "/" <>
-         "=" <> "?" <>
-         "^" <> "_" <>
-         "`" <> "{" <>
-         "|" <> "}" <>
-         "~"
-
-atToken = '@'
-
-atext = oneOf (alpha <> digit <> symbol)
-
-CFWS = " " <> "\t" <> "\n"
-
-atom = many (oneOf CFWS) >> many1 atext >> many (oneOf CFWS)
-
-dot-atom-text = many1k
-
-
-
-atext = try (oneOf alphaNum) <|> try (oneOf symbol)
-
-
-
-
-
-
-addr-spec = local-part >> (char atToken) >> domain
 
 extensionSeperator :: String
 extensionSeperator = "x"

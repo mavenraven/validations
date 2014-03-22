@@ -1,11 +1,11 @@
-module Text.Digestive.Validations.Parsers.Helpers
+module Validations.Parsers.Helpers
     ( testPhoneParser
     , testPhoneParserDoesNotParse
     ) where
 
-import Text.Digestive.Validations.Parsers
+import Validations.Parsers
 import Data.Text(Text)
-import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber)
+import Validations.Types.PhoneNumber(PhoneNumber)
 
 import Test.Framework                     (Test, TestName)
 import Test.Framework.Providers.HUnit     (testCase)

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Localization
+module Validations.Localization
     ( LanguageCode(..)
     , Clause
     , Sentence

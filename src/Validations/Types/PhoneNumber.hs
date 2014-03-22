@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Types.PhoneNumber
+module Validations.Types.PhoneNumber
     ( PhoneNumber(..)
     )
     where
@@ -10,7 +10,7 @@ import Data.Text(Text, null)
 import Data.Monoid(Monoid(mempty, mappend), (<>))
 import Control.Monad.State(get, put)
 import Control.Monad.State.Strict(execState)
-import Text.Digestive.Validations.Format(Format(..))
+import Validations.Format(Format(..))
 
 data PhoneNumber = PhoneNumber
   { _countryCode :: Text

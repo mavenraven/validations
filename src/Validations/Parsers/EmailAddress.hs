@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Parsers.PhoneNumber
-    ( phoneNumberParser
-    , runPhoneNumberParser
-    , tokenizePhoneNumber
-    , PhoneNumberParser
+module Validations.Parsers.PhoneNumber
+    ( emailAddressParser
+    , runEmailAddressParser
+    , tokenizeEmailAddress
+    , EmailAddressParser
     )
     where
 
@@ -21,15 +21,44 @@ import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
 
 type PhoneNumberParser m a = ParsecT Text (PhoneNumber) m a
 
-digit :: String
-digit = ['0' .. '9']
+--rfc 5322, http://tools.ietf.org/html/rfc5322
 
-lbrace :: String
-lbrace = "({["
 
-rbrace :: String
-rbrace = ")}]"
 
+alpha = ['a' .. 'z'] <> ['A' .. 'Z']
+digit = ['0' .. '9'] 
+
+symbol = "!" <> "#" <>
+         "$" <> "%" <>
+         "&" <> "'" <>
+         "*" <> "+" <>
+         "_" <> "/" <>
+         "=" <> "?" <>
+         "^" <> "_" <>
+         "`" <> "{" <>
+         "|" <> "}" <>
+         "~"
+
+atToken = '@'
+
+atext = oneOf (alpha <> digit <> symbol)
+
+CFWS = " " <> "\t" <> "\n"
+
+atom = many (oneOf CFWS) >> many1 atext >> many (oneOf CFWS)
+
+dot-atom-text = many1k
+
+
+
+atext = try (oneOf alphaNum) <|> try (oneOf symbol)
+
+
+
+
+
+
+addr-spec = local-part >> (char atToken) >> domain
 
 extensionSeperator :: String
 extensionSeperator = "x"

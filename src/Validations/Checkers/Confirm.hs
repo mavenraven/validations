@@ -2,7 +2,7 @@
 {-# LANGUAGE RankNTypes        #-}
 
 
-module Text.Digestive.Validations.Confirm
+module Validations.Checkers.Confirm
 --  ( posted
 --  , contextValidate
 --  , userValidation
@@ -13,10 +13,10 @@ import Prelude hiding ((.))
 import Control.Monad.Identity
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Class(lift)
-import Text.Digestive.Validations.Internal.Lens(getter, setter, Lens, firstTuple, lens)
+import Validations.Internal.Lens(getter, setter, Lens, firstTuple, lens)
 import Text.Digestive.Form(Form, validateM, text, (.:))
-import qualified Text.Digestive.Validations.PhoneNumber as VPH
-import Text.Digestive.Validations.Types.PhoneNumber as TPH
+import qualified Validations.Checkers.PhoneNumber as VPH
+import Validations.Types.PhoneNumber as TPH
 import Text.Digestive.Form
 import Text.Digestive.Form.Encoding
 import Text.Digestive.Types

@@ -4,12 +4,13 @@ module Main
 
 import Test.Framework (defaultMain)
 
-import qualified Text.Digestive.Validations.Parsers.Tests
-import qualified Text.Digestive.Validations.PhoneNumber.Tests
+import qualified Validations.Parsers.Tests
+import qualified Validations.Checkers.PhoneNumber.Tests
 
 main :: IO ()
 main = defaultMain
-    [ Text.Digestive.Validations.Parsers.Tests.phoneNumberTests
-    , Text.Digestive.Validations.Parsers.Tests.phoneNumberPrecedenceTests
-    , Text.Digestive.Validations.PhoneNumber.Tests.phoneNumberShowTests
+    [ Validations.Parsers.Tests.phoneNumberTests
+    , Validations.Parsers.Tests.phoneNumberPrecedenceTests
+
+    , Validations.Checkers.PhoneNumber.Tests.phoneNumberShowTests
     ]

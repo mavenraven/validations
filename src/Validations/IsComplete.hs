@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.IsComplete
+module Validations.IsComplete
   ( IsComplete(..)
   ) where
 
 import Prelude hiding (length)
-import Text.Digestive.Validations.Localization(LocalizedMessage)
-import Text.Digestive.Types(Result(..))
-import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
-import Text.Digestive.Validations.Localization(english, Message(..), message)
+import Validations.Localization(LocalizedMessage)
+import Validations.Types.PhoneNumber(PhoneNumber(..))
+import Validations.Localization(english, Message(..), message)
 import Data.Text(length)
 
 
@@ -30,12 +29,12 @@ import Data.Text(length)
 -- that are fragments in a form submission. So, all domain objects
 -- should be instances of 'IsComplete'.
 class IsComplete a where
-  isComplete ::  a -> Result LocalizedMessage a
+  isComplete ::  a -> Either LocalizedMessage a
 
 instance IsComplete PhoneNumber where
   isComplete x =
     if (length (_exchange x) >= 3) 
-       then Success x
-       else Error $ message
+       then Right x
+       else Left $ message
          [ Message english Nothing "Phone number is not valid." 
          ]

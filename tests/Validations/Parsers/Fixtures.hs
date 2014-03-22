@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Parsers.Fixtures
+module Validations.Parsers.Fixtures
     ( localPhoneNumber
     , localPhoneNumberWithExtension
     , phoneNumberWithAreaCode
@@ -20,7 +20,7 @@ module Text.Digestive.Validations.Parsers.Fixtures
     , fifteenDigitNumber
     ) where
 
-import Text.Digestive.Validations.Types
+import Validations.Types
 import Data.Monoid(mempty)
 
 localPhoneNumber :: PhoneNumber

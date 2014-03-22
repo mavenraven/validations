@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.Parsers.Tests
+module Validations.Parsers.Tests
     ( phoneNumberTests
     , phoneNumberPrecedenceTests
     ) where
 
-import qualified Text.Digestive.Validations.Parsers.Fixtures as F
-import Text.Digestive.Validations.Parsers.Helpers (testPhoneParser, testPhoneParserDoesNotParse)
+import qualified Validations.Parsers.Fixtures as F
+import Validations.Parsers.Helpers (testPhoneParser, testPhoneParserDoesNotParse)
 import Test.Framework                     (Test, testGroup)
 import Data.Monoid(mempty)
-import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
+import Validations.Types.PhoneNumber(PhoneNumber(..))
 
 
 phoneNumberPrecedenceTests :: Test

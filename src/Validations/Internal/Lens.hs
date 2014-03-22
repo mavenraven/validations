@@ -1,6 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 
-module Text.Digestive.Validations.Internal.Lens
+module Validations.Internal.Lens
   ( getter
   , setter
   , lens

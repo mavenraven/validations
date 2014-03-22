@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.PhoneNumber
+module Validations.Checkers.PhoneNumber
   ( phoneNumber
   , hasAreaCode
   , hasExtension
@@ -9,9 +9,9 @@ module Text.Digestive.Validations.PhoneNumber
     where
 
 import Prelude hiding (null)
-import Text.Digestive.Validations.Parsers.PhoneNumber(runPhoneNumberParser)
-import Text.Digestive.Validations.Types.PhoneNumber(PhoneNumber(..))
-import Text.Digestive.Validations.Localization(LocalizedMessage, french, english, dutch, Message(..), message)
+import Validations.Parsers.PhoneNumber(runPhoneNumberParser)
+import Validations.Types.PhoneNumber(PhoneNumber(..))
+import Validations.Localization(LocalizedMessage, french, english, dutch, Message(..), message)
 import Data.Text(null, Text)
 
 

@@ -1,4 +1,4 @@
-module Text.Digestive.Validations.Format
+module Validations.Format
   ( Format(..)
   ) where
 

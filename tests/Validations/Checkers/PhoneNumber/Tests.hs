@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Text.Digestive.Validations.PhoneNumber.Tests
+module Validations.Checkers.PhoneNumber.Tests
     ( phoneNumberShowTests
     ) where
 
-import Text.Digestive.Validations.Types.PhoneNumber
-import Text.Digestive.Validations.Format(Format(..))
+import Validations.Types.PhoneNumber
+import Validations.Format(Format(..))
 import Data.Monoid(mempty)
 import Test.Framework                     (Test, testGroup)
 import Test.Framework.Providers.HUnit     (testCase)
