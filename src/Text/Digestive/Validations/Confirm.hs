@@ -3,10 +3,10 @@
 
 
 module Text.Digestive.Validations.Confirm
-  ( posted
-  , contextValidate
-  , userValidation
-  ) 
+--  ( posted
+--  , contextValidate
+--  , userValidation
+--  ) 
     where
 
 import Prelude hiding ((.))
@@ -15,7 +15,6 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Class(lift)
 import Text.Digestive.Validations.Internal.Lens(getter, setter, Lens, firstTuple, lens)
 import Text.Digestive.Form(Form, validateM, text, (.:))
-import Text.Digestive.Types(Result(..))
 import qualified Text.Digestive.Validations.PhoneNumber as VPH
 import Text.Digestive.Validations.Types.PhoneNumber as TPH
 import Text.Digestive.Form
@@ -31,72 +30,74 @@ import Control.Arrow((>>>))
 import Control.Category
 import Control.Monad.Trans
 
-newtype ContextualValidator v s m a = ContextualValidator { getContextValidator :: StateT (View v, s) m a}
+newtype Validation errorKey errorValue state monad a = 
+  Validation { getValidation :: StateT ([(errorKey, errorValue)], state) monad a}
 
-instance (Monoid s, Monoid v, Monad m) => Monad (ContextualValidator v s m) where
-  return = ContextualValidator . return
-  (ContextualValidator st) >>= f = ContextualValidator (st >>= \x -> getContextValidator (f x))
+instance (Monad m) => Monad (Validation ek ev s m) where
+  return = Validation . return
+  (Validation st) >>= f = Validation (st >>= \x -> getValidation (f x))
 
-instance MonadTrans (ContextualValidator v s) where
-  lift m = ContextualValidator (lift m)
+instance MonadTrans (Validation ek ev s) where
+  lift m = Validation (lift m)
 
 
-getView :: (Monad m) => ContextualValidator v s m (View v)
-getView = ContextualValidator (get >>= \(v,_) -> return v)
-putView v = ContextualValidator (get >>= \(_,s) -> put (v,s))
+getErrors :: (Monad m) => Validation ek ev s m [(ek, ev)]
+getErrors  = Validation (get >>= \(es,_) -> return es)
 
-getState :: (Monad m) => ContextualValidator v s m s
-getState   = ContextualValidator (get >>= \(_,s) -> return s)
-putState s = ContextualValidator (get >>= \(v,_) -> put (v,s))
+addError :: (Monad m) => (ek, ev) -> Validation ek ev s m ()
+addError e = Validation (get >>= \(es,s) -> put (es <> [e],s))
 
-type FieldName = Text
-validation :: (Monad m, Monoid v, Monoid s) => a -> Validator m FieldName v a b -> ContextualValidator v s m (Maybe b)
+getState :: (Monad m) => Validation ek ev s m s
+getState  = Validation (get >>= \(_,s) -> return s)
+
+putState  :: (Monad m) => s -> Validation ek ev s m ()
+putState s = Validation (get >>= \(es,_) -> put (es,s))
+
+validation :: (Monad m) => a -> Validator ek ev m a b -> Validation ek ev s m (Maybe b)
 validation a f = do
   result <- lift $ (getValidator f) a
   case (result) of
-    Success x     -> return (Just x)
-    Error (fn, e) -> do
-      view <- getView
-      let path = absolutePath fn view
-      let newErrors = (viewErrors view) <> [(path, e)]
-      putView $ view {viewErrors = newErrors}
+    Right x      -> return (Just x)
+    Left (ek, ev) -> do
+      addError (ek,ev)
       return Nothing
 
 
-runValidations :: (Monoid s, Monad m) => View v -> ContextualValidator v s m () -> m (View v, s)
-runValidations view cv = runStateT (getContextValidator cv) (view, mempty) >>= \(_,s) -> return s
-
-tupleToType3 :: (a,b,c) -> (a -> b -> c -> d) -> d
-tupleToType3 (a,b,c) constructor = constructor a b c
+runValidation :: (Monad m) => Validation ek ev s m a -> s -> m ([(ek,ev)], s)
+runValidation v s = runStateT (getValidation v) ([], s)  >>= return . snd 
 
 
 notEmpty x = case x of
-  "" -> Error "is empty"
-  _  -> Success x
+  "" -> Left "is empty"
+  _  -> Right x
 
 
 
-set :: (Monoid s, Monoid v, Monad m) => (forall f. (Functor f) => (a -> f a) -> s -> f s) -> (Maybe a) -> ContextualValidator v s m ()
+set :: (Monad m) => (forall f. (Functor f) => (a -> f a) -> s -> f s) -> (Maybe a) -> Validation errorKey errorValue s m ()
 set lns x = case x of
     Just x' -> do
       s <- getState 
       putState (setter lns s x')
     Nothing -> return ()
 
-attachTo :: (Monad m) => (a -> Result v b) -> fn -> Validator m fn v a b
+
+type Checker error a b = a -> Either error b
+type MonadicChecker error monad a b = a -> monad (Either error b)
+
+attachTo :: (Monad m) => Checker ev a b -> ek -> Validator ek ev m a b
 attachTo validator fieldName = Validator $ \x -> case (validator x) of
-  Success x' -> return $ Success x'
-  Error  e   -> return $ Error (fieldName, e)
+  Right x' -> return $ Right x'
+  Left  e   -> return $ Left (fieldName, e)
 
-attachMTo :: (Monad m) => (a -> m (Result v b)) -> fn -> Validator m fn v a b
+attachMTo :: (Monad m) => MonadicChecker ev m a b -> ek -> Validator ek ev m a b
 attachMTo validator fieldName = Validator $ \x -> validator x >>= \x -> case x of
-  Success x' -> return $ Success x'
-  Error  e   -> return $ Error (fieldName, e)
+  Right x' -> return $ Right x'
+  Left  e   -> return $ Left (fieldName, e)
 
-compose :: (Monad m) => (a -> m (Result (k, v) b)) -> (b -> m (Result (k, v) c)) -> (a -> m (Result (k, v) c))
+compose :: (Monad m) => (a -> m (Either (k, v) b)) -> (b -> m (Either (k, v) c)) -> (a -> m (Either (k, v) c))
 compose f g = (\a -> f a >>= \rb -> case rb of
-  Success b     -> g b
-  Error   (fn,e) -> return (Error (fn, e)))
+  Right b     -> g b
+  Left   (fn,e) -> return (Left (fn, e)))
 
 data User = User
   { _firstName   :: Text
@@ -105,10 +106,10 @@ data User = User
   , _phoneNumber :: TPH.PhoneNumber
   } deriving Show
 
-newtype Validator m k v a b  = Validator { getValidator :: a -> m (Result (k, v) b) }
+newtype Validator errorKey errorValue monad a b  = Validator { getValidator :: a -> monad (Either (errorKey, errorValue) b) }
 
-instance (Monad m, Monoid v) => Category (Validator m k v) where
-  id = Validator (\x -> return (Success x))
+instance (Monad m) => Category (Validator ek ev m) where
+  id = Validator (\x -> return (Right x))
   y . x = Validator (compose (getValidator x) (getValidator y))
 
 instance Monoid User where
@@ -121,8 +122,8 @@ lastName :: Lens Text User
 lastName  = lens _lastName (\s a -> s {_lastName = a})
 email :: Lens Text User
 email     = lens _email (\s a -> s {_email = a})
-phoneNumber :: Lens PhoneNumber User
-phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
+phoneNumber2 :: Lens PhoneNumber User
+phoneNumber2 = lens _phoneNumber (\s a -> s {_phoneNumber = a})
 
 
 firstNameField     = "firstName"
@@ -141,15 +142,15 @@ userForm = (,,,,)
 
 
 confirms a b = case (a == b) of
-  True -> Success a
-  False -> Error "fields do not match."
+  True -> Left a
+  False -> Right "fields do not match."
 
 coolness x = do
   print "hi"
-  return $ Success x
+  return $ Right x
 
 
---userValidation :: (Monad m) => (Text,Text,Text,Text,Text) -> ContextualValidator Text User m ()
+--userValidation :: (Monad m) => (Text,Text,Text,Text,Text) -> Validation Text User m ()
 userValidation (f1,f2,f3,f4,f5) = do
   validation f1 ( 
       notEmpty `attachTo`   firstNameField
@@ -159,6 +160,7 @@ userValidation (f1,f2,f3,f4,f5) = do
       coolness `attachMTo`  firstNameField
     )
     >>= set firstName
+{-
 
   validation f2 (
       notEmpty `attachTo` lastNameField
@@ -197,7 +199,7 @@ posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text,Text,Text))
 posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]
 
 
-contextValidate :: (Monad m, Monoid v, Monoid s) => m (View v, Maybe a) -> (a -> ContextualValidator v s m ()) -> m (View v, Maybe s)
+contextValidate :: (Monad m, Monoid v, Monoid s) => m (View v, Maybe a) -> (a -> Validation v s m ()) -> m (View v, Maybe s)
 contextValidate view validator = view >>= \(v,x) -> case x of
   Nothing -> return $ (v, Nothing)
   Just a  -> do
@@ -224,3 +226,4 @@ contextValidate view validator = view >>= \(v,x) -> case x of
 testEnv :: Monad m => [(Text, Text)] -> FormEncType -> m (Env m)
 testEnv input _formEncType = return $ \key -> return $ map (TextInput . snd) $
     filter ((== fromPath key) . fst) input
+-}
