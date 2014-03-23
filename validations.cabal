@@ -19,6 +19,7 @@ cabal-version:       >=1.10
 Library
   exposed-modules:     
       Validations
+      Validations.Tutorial
   -- other-modules:       
   -- other-extensions:    
   build-depends:

@@ -41,7 +41,6 @@ composeValidation :: (Monad m, Eq ek, Eq ev) => Validation ek ev s m a b -> Vali
 composeValidation v1 v2 = Validation $ \s es a -> ((getValidation v1) s es a) >>= \r -> case r of
   (s', es', b) -> (getValidation v2) s' (nub (es <> es')) b
 
-
 instance (Monad m, Eq ek, Eq ev) => Category (Validation ek ev s m) where
   id = Validation (\s es a -> return (s, es, a))
   x . y = composeValidation y x
