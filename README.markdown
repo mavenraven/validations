@@ -23,20 +23,27 @@ each current method has drawbacks. Let's imagine a simple user model:
       , _emailAddress :: Text
       } deriving Show
 
+We want to check that the first name is not empty and starts with the letter
+A, the last lame is not empty, the email address is not empty, and it is confirmed
+by a value that isn't stored in User.
+
+
 ### Smart Constructors ###
 
-We want to check that the first name is not empty and starts with the letter
-A, the last lame is not empty, and the email address is not empty. The simplest
-way to do this is with a smart constructor:
+The simplest way to do this is with a smart constructor:
 
-    -- assume notEmpty   :: Text -> Either Text Text
-    -- and    startsWith :: Text -> Text -> Either Text Text
-    user :: Text -> Text -> Text -> Either Userj
-    user firstName lastName emailAddress = do
+    -- assume:
+    -- notEmpty   :: Text -> Either Text Text
+    -- startsWith :: Text -> Text -> Either Text Text
+    -- confirm    :: Text -> Text -> Either Text Text
+
+    user :: Text -> Text -> Text -> Text -> Either User
+    user firstName lastName emailAddress emailAddressConfirm = do
       firstName'    <- notEmpty firstName >>= startsWith "A"
       lastName'     <- notEmpty lastName
       emailAddress' <- notEmpty emailAddress
-      return User {_firstName = firstName', _lastName = lastName', _emailAddress = emailAddress }
+      confirmed     <- confirm emailAddress emailAddressConfirm
+      return $ User {_firstName = firstName', _lastName = lastName', _emailAddress = confirmed }
       
 
 This will enforce all of our invariants, but there's a problem. If any of our validations
@@ -47,7 +54,34 @@ hidden, then a User record can only be used in contexts where all the invariants
 which can be inflexible.
 
 
-### Digestive-functor formlet style ###
+### digestive-functors formlet style ###
+
+digestive-functors solves the multiple validations problem. Our formlet could look like:
+
+    -- assume:
+    -- notEmpty   :: Text -> Result Text Text
+    -- startsWith :: Text -> Text -> Result Text Text
+    -- confirm    :: Text -> Text -> Result Text Text
+
+    userForm :: (Monad m) => Form Text m User
+    userForm = User <$>
+    <*>  "firstName" .: validate (notEmpty >=> startsWith "A") (text Nothing)
+    <*>  "lastName " .: validate notEmpty (text Nothing)
+    <*>  "email"     .: validate notEmpty (text Nothing)
+
+But, how do we handle the email confirmations? Since formlets are applicatives
+and not monadic, it looks like the only we could do it is something like:
+
+    userForm :: (MonadState s m) => Form Text m User
+    userForm = User <$>
+    <*>  "firstName"    .: validate (notEmpty >=> startsWith "A") (text Nothing)
+    <*>  "lastName "    .: validate notEmpty (text Nothing)
+    <*>  "email"        .: validateM (return . notEmpty >=> willConfirm) (text Nothing)
+    <*>  "emailConfirm" .: validateM confirms (text Nothing)
+
+Unfortunately, this has its own set of problems. The biggest, at least with how digestive-functors
+is currently structured, is that
+
 
 
 security numbers, and more. It also provides localized error messages for 
