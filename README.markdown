@@ -14,6 +14,7 @@ an email checker, etc.) with localized error messages.
 Existing solutions, and their problems
 --------------------------------------
 
+[jumo to the "hello world" code example](http://www.google.com)
 There is a number of ways to do domain model validation in Haskell, but
 each current method has drawbacks. Let's imagine a simple user model:
 
@@ -25,8 +26,15 @@ each current method has drawbacks. Let's imagine a simple user model:
 
 We want to check that the first name is not empty and starts with the letter
 A, the last lame is not empty, the email address is not empty, and it is confirmed
-by a value that isn't stored in User.
+by a value that isn't stored in User. We also want all checkers to conform to the
+type 
 
+    a -> Either e b
+
+or
+
+    (Monad m) -> a m (Either a b)
+.
 
 ### Smart Constructors ###
 
@@ -80,7 +88,21 @@ and not monadic, it looks like the only we could do it is something like:
     <*>  "emailConfirm" .: validateM confirms (text Nothing)
 
 Unfortunately, this has its own set of problems. The biggest, at least with how digestive-functors
-is currently structured, is that
+is currently structured, is that it's hard to escape the monad if we just wanted to use the state
+for evaluating the form. Even without this limitation, we are still passing state around in awkward
+way that doesn't really show our intent. Also, by mixing our validation logic with our formlet rendering
+logic, we are making it harder to test and reuse our validation logic. So, while using digestive-functor
+style is workable, validations tries to offer a cleaner way.
+
+Ideas behind the validation library structure
+---------------------------------------------
+
+[jumo to the "hello world" code example](http://www.google.com)
+validations is based around 4 different data types. First, a *Checker* is
+function with type
+
+    a -> Either e b
+
 
 
 
