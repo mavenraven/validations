@@ -14,7 +14,7 @@ an email checker, etc.) with localized error messages.
 Existing solutions, and their problems
 --------------------------------------
 
-[jump to the "hello world" code example](http://www.google.com)
+[jump to the "hello world" code example](#hello-world)
 
 
 There is a number of ways to do domain model validation in Haskell, but
@@ -99,7 +99,7 @@ style is workable, validations tries to offer a cleaner way.
 Ideas behind the validation library structure
 ---------------------------------------------
 
-[jump to the "hello world" code example](http://www.google.com)
+[jump to the "hello world" code example](#hello-world)
 
 
 validations is based around 4 different data types. First, a *Checker* is
@@ -117,10 +117,14 @@ example,
         else Right x
 
 Notice that a checker can transform its input as well, which a callee is free
-to ignore. A *Monadic Checker* is the same as a checker, but with type
+to ignore.
+
+
+A *Monadic Checker* is the same as a checker, but with type
 
     (Monad m) => a -> m (Either e b)
 .
+
 
 The next data type is a *Validator*. It's a function with type
 
@@ -149,9 +153,99 @@ to wrap any conforming function as the Validator data constructor is public.
 
 The final import data type is a *Validation*. The type of a validations is:
 
-   state -> monad (newState, errors)
+    state -> monad (newState, errors)
 
-where state is a type like a user record, newState 
+where state is a type like a user record. newState is typically the same type as state, but
+a transformation is allowed. Validations can be constructed with
+
+    validation :: (Monad m) => Lens b s -> a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
+
+Validations also form a category and can be composed, similar to validators.
+
+
+hello world
+-----------
+
+(all code is included in src/Validations/Tutorial.hs)
+Let's see the validators and validations in action. First, let's define a User record:
+    data User = User
+    { _firstName   :: Text
+    , _lastName    :: Text
+    , _email       :: Text
+    , _phoneNumber :: PhoneNumber
+    } deriving Show
+
+PhoneNumber is a record type included with validations that allows access to a phone
+number's exchange, extension, etc. Next, we want to define lenses for accessing and
+mutating the fields. In this example, we are using validations internal lens functionality,
+but we'd typically use something like [lens](http://hackage.haskell.org/package/lens) in our
+application. 
+
+    firstName :: Lens Text User
+    firstName = lens _firstName (\s a -> s {_firstName = a})
+
+    lastName :: Lens Text User
+    lastName  = lens _lastName (\s a -> s {_lastName = a})
+
+    email :: Lens Text User
+    email     = lens _email (\s a -> s {_email = a})
+
+    phoneNumber :: Lens PhoneNumber User
+    phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
+
+
+We also want to use digestive-functors to define our form to bring data in.
+
+    firstNameField     = "firstName"
+    lastNameField      = "lastName"
+    emailField         = "email"
+    emailConfirmField  = "emailConfirm"
+    phoneNumberField   = "phoneNumber"
+
+    userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
+    userForm = (,,,,)
+    <$> firstNameField    .: (text Nothing)
+    <*> lastNameField     .: (text Nothing)
+    <*> emailField        .: (text Nothing)
+    <*> emailConfirmField .: (text Nothing)
+    <*> phoneNumberField  .: (text Nothing)
+
+We don't use field names directly in our formlet because we need to use
+them in our validation as well. Also, notice that we are outputting a 5-tuple
+instead of a User record. This is because there isn't a one to one correspondence
+between our input fields and User record fields (the email confirm field will be discarded).
+So, our validation looks like
+
+    userValidation (f1, f2, f3,f4, f5) = 
+    validation firstName f1 (
+      notEmpty `attach` firstNameField
+    )
+    >>>
+    validation lastName f2 (
+      notEmpty `attach` lastNameField
+    )
+    >>>
+    validation email f3 (
+      notEmpty        `attach` emailField
+      >>>
+      (f4 `confirms`) `attach` emailConfirmField
+    )
+    >>>
+    validation lastName  f5 (
+      notEmpty `attach` emailConfirmField
+    )
+    >>>
+    validation phoneNumber2 f5 (
+      notEmpty                                                 `attach` phoneNumberField
+      >>>
+      (VPH.phoneNumber  >>> mapLeft (const "bad number"))      `attach` phoneNumberField
+      >>> 
+      (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
+    ) 
+
+
+
+
 
 
 
