@@ -1,9 +1,53 @@
 validations
 ===========
 
-What is "validations", and why does it exist?
-----
+What is "validations"?
+----------------------
 
+validations is a Haskell library that attempts to solve two problems.
+First, it provides a flexible, composable way to define validations
+of a domain model.  It also includes a bunch of useful "checkers"
+that aren't specific to any one domain model (e.g. a phone number checker,
+an email checker, etc.) with localized error messages.
+
+
+Existing solutions, and their problems
+--------------------------------------
+
+There is a number of ways to do domain model validation in Haskell, but
+each current method has drawbacks. Let's imagine a simple user model:
+
+    data User = User
+      { _firstName    :: Text
+      , _lastName     :: Text
+      , _emailAddress :: Text
+      } deriving Show
+
+### Smart Constructors ###
+
+We want to check that the first name is not empty and starts with the letter
+A, the last lame is not empty, and the email address is not empty. The simplest
+way to do this is with a smart constructor:
+
+    -- assume notEmpty   :: Text -> Either Text Text
+    -- and    startsWith :: Text -> Text -> Either Text Text
+    user :: Text -> Text -> Text -> Either Userj
+    user firstName lastName emailAddress = do
+      firstName'    <- notEmpty firstName >>= startsWith "A"
+      lastName'     <- notEmpty lastName
+      emailAddress' <- notEmpty emailAddress
+      return User {_firstName = firstName', _lastName = lastName', _emailAddress = emailAddress }
+      
+
+This will enforce all of our invariants, but there's a problem. If any of our validations
+fail, then we only get the results of the failure of first validation. If firstName and
+lastName are both empty, we'd like to know that the validation logic failed for both. Also, if we
+use the pattern of exposing only the smart constructor (user, and keeping the data Constructor (User)
+hidden, then a User record can only be used in contexts where all the invariants must always be held,
+which can be inflexible.
+
+
+### Digestive-functor formlet style ###
 
 
 security numbers, and more. It also provides localized error messages for 
