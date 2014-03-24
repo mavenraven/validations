@@ -1,11 +1,8 @@
 {-# LANGUAGE RankNTypes        #-}
 
 module Validations.Validation
-  ( runValidation'
-  , runValidation
-  , Validation(..)
+  ( Validation(..)
   , validation
-  , validation_
   ) 
     where
 
@@ -13,34 +10,20 @@ import Prelude hiding ((.))
 import Validations.Internal.Lens(Lens, setter)
 import Data.Monoid(Monoid, (<>), mempty)
 import Control.Category(Category(..))
-import Data.List(nub)
-import Validations.Validator(Validator, getValidator)
+import Validations.Validator(Validator, runValidator)
 
-runValidation' :: (Monad m, Monoid s) => Validation ek ev s m a b -> [(ek, ev)] -> m (s, [(ek,ev)])
-runValidation' v e = (getValidation v) mempty e Nothing >>= \r -> case r of
-  (s,es,_) -> return (s,es)
+newtype Validation errors monad state newState = Validation { runValidation :: state -> monad (newState, errors) } 
+ 
+instance (Monad m, Monoid e) => Category (Validation e m) where
+  id = Validation (\s -> return (s,mempty))
+  x . y = composeValidation y x 
 
-runValidation :: (Monad m) => Validation ek ev s m a b -> [(ek,ev)] -> s -> m (s, [(ek,ev)])
-runValidation v e s = (getValidation v) s e Nothing >>= \r -> case r of
-  (s',es,_) -> return (s',es)
+composeValidation :: (Monad m, Monoid e) => Validation e m s t -> Validation e m t u -> Validation e m s u
+composeValidation v1 v2 = Validation $ \s      -> ((runValidation v1) s) >>=
+                                       \(t,e)  -> ((runValidation v2) t) >>=
+                                       \(u,e') -> return (u, e <> e')
 
-newtype Validation errorKey errorValue state monad a b = 
-  Validation { getValidation :: state -> [(errorKey, errorValue)] -> Maybe a -> monad (state, [(errorKey, errorValue)], Maybe b)}
-
-validation :: (Monad m, Eq ek, Eq ev) => Lens b s -> a -> Validator ek ev m a b ->  Validation ek ev s m a b
-validation lns a v = Validation $ \s es _ -> ((getValidator v) a) >>= \r -> case r of
-    Left e  -> return (s, nub (es <> [e]), Nothing)
-    Right b -> return (setter lns s b, es, Just b)
-
-validation_ :: (Monad m, Eq ek, Eq ev) => a -> Validator ek ev m a b -> Validation ek ev s m a b
-validation_  a v = Validation $ \s es _ -> ((getValidator v) a) >>= \r -> case r of
-    Left e  -> return (s, nub (es <> [e]), Nothing)
-    Right b -> return (s, es, Just b)
-
-composeValidation :: (Monad m, Eq ek, Eq ev) => Validation ek ev s m a b -> Validation ek ev s m b c -> Validation ek ev s m a c
-composeValidation v1 v2 = Validation $ \s es a -> ((getValidation v1) s es a) >>= \r -> case r of
-  (s', es', b) -> (getValidation v2) s' (nub (es <> es')) b
-
-instance (Monad m, Eq ek, Eq ev) => Category (Validation ek ev s m) where
-  id = Validation (\s es a -> return (s, es, a))
-  x . y = composeValidation y x
+validation :: (Monad m) => Lens b s -> a -> Validator ek ev m a b ->  Validation [(ek,ev)] m s s
+validation lns a v = Validation $ \s -> ((runValidator v) a) >>= \r -> case r of
+    Left e  -> return (s, [e])
+    Right b -> return (setter lns s b, [])

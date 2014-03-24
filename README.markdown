@@ -1,11 +1,11 @@
-digestive-functors-validations
-==================
+validations
+===========
 
-What
+What is "validations", and why does it exist?
 ----
 
-digestive-functors-validations is a library that adds common validations
-to form inputs such as phone numbers, currency, date and times, social
+
+
 security numbers, and more. It also provides localized error messages for 
 invalid inputs, which can be used in conjuction with the accept headers in
 Snap to provide out of the box internationalization.  It's based on the idea of

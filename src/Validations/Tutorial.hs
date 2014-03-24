@@ -27,7 +27,7 @@ import Text.Digestive.View(View, postForm)
 import Data.Monoid(Monoid(..), mempty)
 import Control.Arrow((>>>))
 import Validations.Validator(attach)
-import Validations.Validation(Validation, validation, validation_)
+import Validations.Validation(Validation, validation)
 
 data User = User
   { _firstName   :: Text
@@ -87,7 +87,7 @@ userForm = (,,,,)
   <*> emailConfirmField .: (text Nothing)
   <*> phoneNumberField  .: (text Nothing)
 
-userValidation :: (Text, Text, Text,Text,Text) -> Validation Text Text User IO Text PhoneNumber
+--userValidation :: (Text, Text, Text, Text, Text) -> Validation [(Text, Text)] IO User User
 userValidation (f1, f2, f3,f4, f5) = 
   validation firstName f1 (
     notEmpty `attach` firstNameField
@@ -103,7 +103,7 @@ userValidation (f1, f2, f3,f4, f5) =
     (f4 `confirms`) `attach` emailConfirmField
   )
   >>>
-  validation_  f5 (
+  validation lastName  f5 (
     notEmpty `attach` emailConfirmField
   )
   >>>
@@ -121,8 +121,10 @@ confirms a b = case (a == b) of
   True -> Right b
   False -> Left "fields do not match."
 
+{-
 z :: (Monad m, Monoid v, Monoid t) => (s -> Validation Text v t m a b) -> m (View v, Maybe s) -> m (View v, Maybe t)
 z = validateView
+-}
 
 posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text,Text,Text))
 posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]

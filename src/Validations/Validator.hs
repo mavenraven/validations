@@ -18,11 +18,11 @@ attachM validator fieldName = Validator $ \x -> validator x >>= \y -> case y of
   Right y' -> return $ Right y'
   Left  e   -> return $ Left (fieldName, e)
 
-newtype Validator errorKey errorValue monad a b  = Validator { getValidator :: a -> monad (Either (errorKey, errorValue) b) }
+newtype Validator errorKey errorValue monad a b  = Validator { runValidator :: a -> monad (Either (errorKey, errorValue) b) }
 
 instance (Monad m) => Category (Validator ek ev m) where
   id = Validator (\x -> return (Right x))
-  y . x = Validator (compose (getValidator x) (getValidator y))
+  y . x = Validator (compose (runValidator x) (runValidator y))
 
 compose :: (Monad m) => (a -> m (Either (k, v) b)) -> (b -> m (Either (k, v) c)) -> (a -> m (Either (k, v) c))
 compose f g = (\a -> f a >>= \rb -> case rb of

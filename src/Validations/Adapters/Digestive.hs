@@ -4,21 +4,21 @@ module Validations.Adapters.Digestive
   ) 
    where
 
-import Data.Monoid(Monoid,(<>))
-import Text.Digestive.View(View,absolutePath,viewErrors)
-import Validations.Validation(Validation,runValidation')
+import Data.Monoid(Monoid, (<>), mempty)
+import Text.Digestive.View(View,absolutePath, viewErrors)
+import Validations.Validation(Validation, runValidation)
 import Data.Text(Text)
 import Text.Digestive.Form.Encoding(FormEncType)
-import Text.Digestive.Types(Env,FormInput(TextInput),fromPath)
+import Text.Digestive.Types(Env, FormInput(TextInput), fromPath)
 
-validateView :: (Monad m, Monoid v, Monoid t) => (s -> Validation Text v t m a b) -> m (View v, Maybe s) -> m (View v, Maybe t)
-validateView validation view  = view >>= \(v,x) -> case x of
+validateView :: (Monad m, Monoid t) => (s -> Validation [(Text, e)] m t u) -> m (View e, Maybe s) -> m (View e, Maybe u)
+validateView validation m  = m >>= \(v,ms) -> case ms of
   Nothing -> return $ (v, Nothing)
   Just s  -> do
-    (s',es) <- runValidation' (validation s) []
+    (t,es) <- (runValidation (validation s)) mempty
     es' <- return $  (map (\y -> (absolutePath (fst y) v, snd y)) es) <> (viewErrors v)
     case es of
-      [] -> return $ (v, Just s')
+      [] -> return $ (v, Just t)
       _  -> return $ (v {viewErrors = (viewErrors v) <> es'}, Nothing)
 
 testEnv :: Monad m => [(Text, Text)] -> FormEncType -> m (Env m)
