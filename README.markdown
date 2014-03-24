@@ -14,7 +14,9 @@ an email checker, etc.) with localized error messages.
 Existing solutions, and their problems
 --------------------------------------
 
-[jumo to the "hello world" code example](http://www.google.com)
+[jump to the "hello world" code example](http://www.google.com)
+
+
 There is a number of ways to do domain model validation in Haskell, but
 each current method has drawbacks. Let's imagine a simple user model:
 
@@ -33,7 +35,7 @@ type
 
 or
 
-    (Monad m) -> a m (Either a b)
+    (Monad m) => a -> m (Either a b)
 .
 
 ### Smart Constructors ###
@@ -57,7 +59,7 @@ The simplest way to do this is with a smart constructor:
 This will enforce all of our invariants, but there's a problem. If any of our validations
 fail, then we only get the results of the failure of first validation. If firstName and
 lastName are both empty, we'd like to know that the validation logic failed for both. Also, if we
-use the pattern of exposing only the smart constructor (user, and keeping the data Constructor (User)
+use the pattern of exposing only the smart constructor (user), and keeping the data constructor (User)
 hidden, then a User record can only be used in contexts where all the invariants must always be held,
 which can be inflexible.
 
@@ -97,21 +99,61 @@ style is workable, validations tries to offer a cleaner way.
 Ideas behind the validation library structure
 ---------------------------------------------
 
-[jumo to the "hello world" code example](http://www.google.com)
+[jump to the "hello world" code example](http://www.google.com)
+
+
 validations is based around 4 different data types. First, a *Checker* is
 function with type
 
     a -> Either e b
 
+Checkers tend to be non domain model specific, reusable pieces of code. For
+example, 
+
+    nonEmpty :: (Monoid a, Eq a) => a -> Either Text a
+    nonEmpty x =
+      if (x == mempty)
+        then Left "cannot be empty"
+        else Right x
+
+Notice that a checker can transform its input as well, which a callee is free
+to ignore. A *Monadic Checker* is the same as a checker, but with type
+
+    (Monad m) => a -> m (Either e b)
+.
+
+The next data type is a *Validator*. It's a function with type
+
+      a -> monad (Either (errorKey, errorValue) b)
+
+It's very similar to a monadic checker, but it also uses an "errorKey" type.
+This allows us to map a validator failure back to some given input (e.g. a form input field).
+If you look at the type signature for a validator, you'll notice that it's very similar to
+
+    a -> m b
+
+, so it's a [Kleisli category](http://www.haskell.org/haskellwiki/Monad_laws),
+but the Either inside doesn't allow us to use Haskell stuff for composing Kleisi categories (e.g. (>=>).
+However, we do now how to unwrap and rewrap Either, so validations provides an instance of 
+Category to allow for validator composition. To create validators, we typically combine either a
+checker with a field name using
+
+    attach :: (Monad m) => Checker ev a b -> ek -> Validator ek ev m a b
+
+or 
+
+    attachM :: (Monad m) => MonadicChecker ev m a b -> ek -> Validator ek ev m a b
+
+for monadic checkers. Both attach and attachM are included with validations, but you're free
+to wrap any conforming function as the Validator data constructor is public.
+
+The final import data type is a *Validation*. The type of a validations is:
+
+   state -> monad (newState, errors)
+
+where state is a type like a user record, newState 
 
 
-
-security numbers, and more. It also provides localized error messages for 
-invalid inputs, which can be used in conjuction with the accept headers in
-Snap to provide out of the box internationalization.  It's based on the idea of
-[Active Record validations](http://edgeguides.rubyonrails.org/active_record_validations.html)
-, but without all the callbacks. Though this library is aimed at working
-digestive-functors, it should be reusable in other contexts as well.
 
 
 Currently Supported Parsers and Validators:
