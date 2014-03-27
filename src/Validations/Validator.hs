@@ -2,6 +2,7 @@ module Validations.Validator
   ( attach
   , attachM
   , Validator(..)
+  , composeValidator
   ) 
     where
 
@@ -22,10 +23,10 @@ newtype Validator errorKey errorValue monad a b  = Validator { runValidator :: a
 
 instance (Monad m) => Category (Validator ek ev m) where
   id = Validator (\x -> return (Right x))
-  y . x = Validator (compose (runValidator x) (runValidator y))
+  y . x = composeValidator x y
 
-compose :: (Monad m) => (a -> m (Either (k, v) b)) -> (b -> m (Either (k, v) c)) -> (a -> m (Either (k, v) c))
-compose f g = (\a -> f a >>= \rb -> case rb of
+
+composeValidator :: (Monad m) => Validator ek ev m a b -> Validator ek ev m b c -> Validator ek ev m a c
+composeValidator (Validator f) (Validator g) = Validator $ (\a -> f a >>= \rb -> case rb of
   Right b     -> g b
   Left   (fn,e) -> return (Left (fn, e)))
-

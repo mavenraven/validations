@@ -4,7 +4,7 @@ validations
 What is "validations"?
 ----------------------
 
-validations is a Haskell library that attempts to solve two problems.
+**validations** is a Haskell library that attempts to solve two problems.
 First, it provides a flexible, composable way to define validations
 of a domain model.  It also includes a bunch of useful "checkers"
 that aren't specific to any one domain model (e.g. a phone number checker,
@@ -94,7 +94,7 @@ is currently structured, is that it's hard to escape the monad if we just wanted
 for evaluating the form. Even without this limitation, we are still passing state around in awkward
 way that doesn't really show our intent. Also, by mixing our validation logic with our formlet rendering
 logic, we are making it harder to test and reuse our validation logic. So, while using digestive-functor
-style is workable, validations tries to offer a cleaner way.
+style is workable, **validations** tries to offer a cleaner way.
 
 Ideas behind the validation library structure
 ---------------------------------------------
@@ -102,7 +102,7 @@ Ideas behind the validation library structure
 [jump to the "hello world" code example](#hello-world)
 
 
-validations is based around 4 different data types. First, a *Checker* is
+**validations** is based around 4 different data types. First, a *Checker* is
 function with type
 
     a -> Either e b
@@ -116,7 +116,7 @@ example,
         then Left "cannot be empty"
         else Right x
 
-Notice that a checker can transform its input as well, which a callee is free
+Notice that a Checker can transform its input as well, which a callee is free
 to ignore.
 
 
@@ -130,16 +130,16 @@ The next data type is a *Validator*. It's a function with type
 
       a -> monad (Either (errorKey, errorValue) b)
 
-It's very similar to a monadic checker, but it also uses an "errorKey" type.
+It's very similar to a Monadic Checker, but it also uses an "errorKey" type.
 This allows us to map a validator failure back to some given input (e.g. a form input field).
-If you look at the type signature for a validator, you'll notice that it's very similar to
+If you look at the type signature for a Validator, you'll notice that it's very similar to
 
     a -> m b
 
 , so it's a [Kleisli category](http://www.haskell.org/haskellwiki/Monad_laws),
 but the Either inside doesn't allow us to use Haskell stuff for composing Kleisi categories (e.g. (>=>).
-However, we do now how to unwrap and rewrap Either, so validations provides an instance of 
-Category to allow for validator composition. To create validators, we typically combine either a
+However, we do now how to unwrap and rewrap Either, so **validations** provides an instance of 
+Category to allow for validator composition. To create Validators, we typically combine either a
 checker with a field name using
 
     attach :: (Monad m) => Checker ev a b -> ek -> Validator ek ev m a b
@@ -148,10 +148,10 @@ or
 
     attachM :: (Monad m) => MonadicChecker ev m a b -> ek -> Validator ek ev m a b
 
-for monadic checkers. Both attach and attachM are included with validations, but you're free
+for monadic checkers. Both attach and attachM are included with **validations**, but you're free
 to wrap any conforming function as the Validator data constructor is public.
 
-The final import data type is a *Validation*. The type of a validations is:
+The final import data type is a *Validation*. The type of a Validation is:
 
     state -> monad (newState, errors)
 
@@ -167,7 +167,9 @@ hello world
 -----------
 
 (all code is included in src/Validations/Tutorial.hs)
-Let's see the validators and validations in action. First, let's define a User record:
+
+
+Let's see the Validators and Validations in action. First, let's define a User record:
     data User = User
     { _firstName   :: Text
     , _lastName    :: Text
@@ -204,11 +206,11 @@ We also want to use digestive-functors to define our form to bring data in.
 
     userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
     userForm = (,,,,)
-    <$> firstNameField    .: (text Nothing)
-    <*> lastNameField     .: (text Nothing)
-    <*> emailField        .: (text Nothing)
-    <*> emailConfirmField .: (text Nothing)
-    <*> phoneNumberField  .: (text Nothing)
+      <$> firstNameField    .: (text Nothing)
+      <*> lastNameField     .: (text Nothing)
+      <*> emailField        .: (text Nothing)
+      <*> emailConfirmField .: (text Nothing)
+      <*> phoneNumberField  .: (text Nothing)
 
 We don't use field names directly in our formlet because we need to use
 them in our validation as well. Also, notice that we are outputting a 5-tuple
@@ -216,6 +218,8 @@ instead of a User record. This is because there isn't a one to one correspondenc
 between our input fields and User record fields (the email confirm field will be discarded).
 So, our validation looks like
 
+
+    userValidation :: (Monad m) => (Text, Text, Text, Text, Text) -> Validation [(Text, Text)] m User User
     userValidation (f1, f2, f3,f4, f5) = 
     validation firstName f1 (
       notEmpty `attach` firstNameField
@@ -242,6 +246,8 @@ So, our validation looks like
       >>> 
       (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
     ) 
+
+
 
 
 
