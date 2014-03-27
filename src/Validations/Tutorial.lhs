@@ -6,14 +6,14 @@
 
 > import Prelude hiding ((.))
 > import Validations.Internal.Lens(Lens, lens)
-> import Validations.Adapters.Digestive(validateView,testEnv)
+> import Validations.Adapters.Digestive(validateView, testEnv)
 > import Text.Digestive.Form(Form, text, (.:))
 > import qualified Validations.Checkers.PhoneNumber as VPH
 > import Validations.Types.PhoneNumber as TPH
-> import Data.Text(Text)
+> import Data.Text(Text, isPrefixOf)
 > import Control.Applicative((<$>), (<*>))
 > import Text.Digestive.View(View, postForm)
-> import Data.Monoid(Monoid(..), mempty)
+> import Data.Monoid(Monoid(..), mempty, (<>))
 > import Control.Arrow((>>>))
 > import Validations.Validator(attach)
 > import Validations.Validation(Validation, validation)
@@ -22,7 +22,7 @@ validations
 ===========
 
 What is "validations"?
-----------------------
+=====================
 
 validations is a Haskell library that attempts to solve two problems.
 First, it provides a flexible, composable way to define validations
@@ -31,7 +31,7 @@ that aren't specific to any one domain model (e.g. a phone number checker,
 an email checker, etc.) with localized error messages.
 
 Existing solutions, and their problems
---------------------------------------
+======================================
 
 [jump to the "hello world" code example](#hello-world)
 
@@ -45,6 +45,44 @@ each current method has drawbacks. Let's imagine a simple user model:
 >   , _email       :: Text
 >   , _phoneNumber :: TPH.PhoneNumber
 >   } deriving Show
+
+We want to check that the first name is not empty and starts with the letter
+A, the last lame is not empty, the email address is not empty, and it is confirmed
+by a value that isn't stored in User. We also want all checkers to conform to the
+type 
+
+< a -> Either e b
+
+or 
+
+< (Monad m) => a -> m (Either a b)
+
+.
+
+So, our checkers could look something like
+
+> notEmpty :: (Monoid a, Eq a) => a -> Either Text a
+> notEmpty x =
+>   if (x == mempty)
+>      then Left "is empty"
+>      else Right x
+
+
+> startsWith :: Text -> Text -> Either Text Text
+> startsWith predicate input = 
+>   if predicate `isPrefixOf` input
+>      then Right input
+>      else Left $ "does not start with " <> predicate
+
+> confirms :: (Eq a) => a -> a -> Either Text a
+> confirms a b = case (a == b) of
+>   True -> Right b
+>   False -> Left "fields do not match."
+
+Smart Constructors
+==================
+
+The simplest way to do this is with a smart constructor:
 
 
 > instance Monoid User where
@@ -63,11 +101,6 @@ each current method has drawbacks. Let's imagine a simple user model:
 > phoneNumber2 :: Lens PhoneNumber User
 > phoneNumber2 = lens _phoneNumber (\s a -> s {_phoneNumber = a})
 
-> notEmpty :: (Monoid a, Eq a) => a -> Either Text a
-> notEmpty x =
->   if (x == mempty)
->      then Left "is empty"
->      else Right x
 
 > mapLeft :: (a -> c) -> Either a b -> Either c b
 > mapLeft f e = case e of
@@ -126,10 +159,6 @@ each current method has drawbacks. Let's imagine a simple user model:
 > 
 >   ) 
 
-> confirms :: (Eq a) => a -> a -> Either Text a
-> confirms a b = case (a == b) of
->   True -> Right b
->   False -> Left "fields do not match."
 
 > {-
 > z :: (Monad m, Monoid v, Monoid t) => (s -> Validation Text v t m a b) -> m (View v, Maybe s) -> m (View v, Maybe t)
