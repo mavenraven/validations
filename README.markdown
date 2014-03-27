@@ -1,38 +1,22 @@
-``` {.sourceCode .literate .haskell}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-```
-
 validations
 ===========
 
 What is "validations"?
 ----------------------
 
-``` {.sourceCode .literate .haskell}
- module Validations.Tutorial
---  ( posted
---  , contextValidate
---  , userValidation
---  ) 
-     where
-```
+validations is a Haskell library that attempts to solve two problems.
+First, it provides a flexible, composable way to define validations of a
+domain model. It also includes a bunch of useful "checkers" that aren't
+specific to any one domain model (e.g. a phone number checker, an email
+checker, etc.) with localized error messages.
 
-``` {.sourceCode .literate .haskell}
-import Prelude hiding ((.))
-import Validations.Internal.Lens(Lens, lens)
-import Validations.Adapters.Digestive(validateView,testEnv)
-import Text.Digestive.Form(Form, text, (.:))
-import qualified Validations.Checkers.PhoneNumber as VPH
-import Validations.Types.PhoneNumber as TPH
-import Data.Text(Text)
-import Control.Applicative((<$>), (<*>))
-import Text.Digestive.View(View, postForm)
-import Data.Monoid(Monoid(..), mempty)
-import Control.Arrow((>>>))
-import Validations.Validator(attach)
-import Validations.Validation(Validation, validation)
-```
+Existing solutions, and their problems
+--------------------------------------
+
+[jump to the "hello world" code example](#hello-world)
+
+There is a number of ways to do domain model validation in Haskell, but
+each current method has drawbacks. Let's imagine a simple user model:
 
 ``` {.sourceCode .literate .haskell}
 data User = User
