@@ -2,7 +2,7 @@ validations
 ===========
 
 What is "validations"?
-======================
+----------------------
 
 validations is a Haskell library that attempts to solve two problems.
 First, it provides a flexible, composable way to define validations of a
@@ -11,7 +11,7 @@ specific to any one domain model (e.g. a phone number checker, an email
 checker, etc.) with localized error messages.
 
 Existing solutions, and their problems
-======================================
+--------------------------------------
 
 [jump to the "hello world" code example](#hello-world)
 
@@ -69,8 +69,7 @@ confirms a b = case (a == b) of
   False -> Left "fields do not match."
 ```
 
-Smart Constructors
-==================
+### Smart Constructors ###
 
 The simplest way to do this is with a smart constructor:
 

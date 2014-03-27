@@ -2,3 +2,4 @@
 
 pandoc -f markdown+lhs -t markdown src/Validations/Tutorial.lhs > README.markdown
 sed -i "" '1,25d' README.markdown
+sed -i "" 's/\\#/#/g' README.markdown
