@@ -20,17 +20,17 @@ each current method has drawbacks. Let's imagine a simple user model:
 
 ``` {.sourceCode .literate .haskell}
 data User = User
-  { _firstName   :: Text
-  , _lastName    :: Text
-  , _email       :: Text
-  , _phoneNumber :: TPH.PhoneNumber
+  { _firstName    :: Text
+  , _lastName     :: Text
+  , _emailAddress :: Text
+  , _phoneNumber  :: PhoneNumber
   } deriving Show
 ```
 
 We want to check that the first name is not empty and starts with the
-letter A, the last lame is not empty, the email address is not empty,
-and it is confirmed by a value that isn't stored in User. We also want
-all checkers to conform to the type
+letter A, that the last name is not empty, that the email address is not
+empty, and that the email address is confirmed by a value that isn't
+stored in User. We also want all checkers to conform to the type
 
 ``` {.sourceCode .haskell}
 a -> Either e b
@@ -54,6 +54,8 @@ notEmpty x =
      else Right x
 ```
 
+,
+
 ``` {.sourceCode .literate .haskell}
 startsWith :: Text -> Text -> Either Text Text
 startsWith predicate input = 
@@ -62,6 +64,8 @@ startsWith predicate input =
      else Left $ "does not start with " <> predicate
 ```
 
+, and
+
 ``` {.sourceCode .literate .haskell}
 confirms :: (Eq a) => a -> a -> Either Text a
 confirms a b = case (a == b) of
@@ -69,13 +73,34 @@ confirms a b = case (a == b) of
   False -> Left "fields do not match."
 ```
 
+.
+
 ### Smart Constructors ###
 
 The simplest way to do this is with a smart constructor:
 
 ``` {.sourceCode .literate .haskell}
+user :: Text -> Text -> Text -> Text -> Either Text User
+user firstName lastName emailAddress emailAddressConfirm = do
+  firstName'    <- notEmpty firstName >>= startsWith "A"
+  lastName'     <- notEmpty lastName
+  emailAddress' <- notEmpty emailAddress
+  confirmed     <- emailAddressConfirm `confirms` emailAddress
+  return $ User {_firstName = firstName', _lastName = lastName', _emailAddress = confirmed }
+```
+
+This will enforce all of our invariants, but there's a problem. If any
+of our validations fail, then we only get the results of the failure of
+first validation. If firstName and lastName are both empty, we'd like to
+know that the validation logic failed for both. Also, if we use the
+pattern of exposing only the smart constructor (user), and keeping the
+data constructor (User) hidden, then a User record can only be used in
+contexts where all the invariants must always be held, which can be
+inflexible.
+
+``` {.sourceCode .literate .haskell}
 instance Monoid User where
-  mempty = User { _firstName = "", _lastName = "", _email = "", _phoneNumber = mempty}
+  mempty = User { _firstName = "", _lastName = "", _emailAddress = "", _phoneNumber = mempty}
   mappend = undefined
 ```
 
@@ -90,8 +115,8 @@ lastName  = lens _lastName (\s a -> s {_lastName = a})
 ```
 
 ``` {.sourceCode .literate .haskell}
-email :: Lens Text User
-email     = lens _email (\s a -> s {_email = a})
+emailAddress :: Lens Text User
+emailAddress = lens _emailAddress (\s a -> s {_emailAddress = a})
 ```
 
 ``` {.sourceCode .literate .haskell}
@@ -152,7 +177,7 @@ userForm = (,,,,)
      notEmpty `attach` lastNameField
    )
    >>>
-   validation email f3 (
+   validation emailAddress f3 (
      notEmpty        `attach` emailField
      >>>
      (f4 `confirms`) `attach` emailConfirmField
