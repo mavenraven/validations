@@ -4,11 +4,11 @@ validations
 What is "validations"?
 ----------------------
 
-validations is a Haskell library that attempts to solve two problems.
-First, it provides a flexible, composable way to define validations of a
-domain model. It also includes a bunch of useful "checkers" that aren't
-specific to any one domain model (e.g. a phone number checker, an email
-checker, etc.) with localized error messages.
+**validations** is a Haskell library that attempts to solve two
+problems. First, it provides a flexible, composable way to define
+validations of a domain model. It also includes a bunch of useful
+"checkers" that aren't specific to any one domain model (e.g. a phone
+number checker, an email checker, etc.) with localized error messages.
 
 Existing solutions, and their problems
 --------------------------------------
@@ -23,7 +23,6 @@ data User = User
   { _firstName    :: Text
   , _lastName     :: Text
   , _emailAddress :: Text
-  , _phoneNumber  :: PhoneNumber
   } deriving Show
 ```
 
@@ -98,7 +97,25 @@ data constructor (User) hidden, then a User record can only be used in
 contexts where all the invariants must always be held, which can be
 inflexible.
 
+### digestive-functors formlet style ###
+
+digestive-functors solves the multiple validations problem. Our formlet
+could look like:
+
 ``` {.sourceCode .literate .haskell}
+userForm :: (Monad m) => Form Text m User
+userForm = User
+  <$>  "firstName"        .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
+  <*>  "lastName "        .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+  <*>  "emailAddress"     .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+```
+
+But, how do we handle the email confirmations? Since formlets are
+applicatives and not monadic, it looks like the only we could do it is
+something like:
+
+``` {.sourceCode .literate .haskell}
+{-
 instance Monoid User where
   mempty = User { _firstName = "", _lastName = "", _emailAddress = "", _phoneNumber = mempty}
   mappend = undefined
@@ -152,11 +169,14 @@ emailConfirmField  = "emailConfirm"
 ```
 
 ``` {.sourceCode .literate .haskell}
+{-
 phoneNumberField :: Text
 phoneNumberField   = "phoneNumber"
+-}
 ```
 
 ``` {.sourceCode .literate .haskell}
+{-
 userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
 userForm = (,,,,)
   <$> firstNameField    .: (text Nothing)
@@ -164,6 +184,7 @@ userForm = (,,,,)
   <*> emailField        .: (text Nothing)
   <*> emailConfirmField .: (text Nothing)
   <*> phoneNumberField  .: (text Nothing)
+-}
 ```
 
 ``` {.sourceCode .literate .haskell}
@@ -206,4 +227,6 @@ z = validateView
 posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text,Text,Text))
 posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]
 
+
+-}
 ```

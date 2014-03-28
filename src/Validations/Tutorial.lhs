@@ -3,11 +3,11 @@
 
 > module Validations.Tutorial  where
 
-
 > import Prelude hiding ((.))
 > import Validations.Internal.Lens(Lens, lens)
 > import Validations.Adapters.Digestive(validateView, testEnv)
-> import Text.Digestive.Form(Form, text, (.:))
+> import Text.Digestive.Form(Form, text, (.:), validate)
+> import Text.Digestive.Types(Result(..))
 > import qualified Validations.Checkers.PhoneNumber as VPH
 > import Validations.Types.PhoneNumber (PhoneNumber)
 > import Data.Text(Text, isPrefixOf)
@@ -15,8 +15,15 @@
 > import Text.Digestive.View(View, postForm)
 > import Data.Monoid(Monoid(..), mempty, (<>))
 > import Control.Arrow((>>>))
+> import Control.Monad((>=>))
 > import Validations.Validator(attach)
 > import Validations.Validation(Validation, validation)
+
+
+> eitherToResult x = case x of
+>   Left x'  -> Error x'
+>   Right x' -> Success x'
+
 
 validations
 ===========
@@ -24,7 +31,7 @@ validations
 What is "validations"?
 ----------------------
 
-validations is a Haskell library that attempts to solve two problems.
+**validations** is a Haskell library that attempts to solve two problems.
 First, it provides a flexible, composable way to define validations
 of a domain model.  It also includes a bunch of useful "checkers"
 that aren't specific to any one domain model (e.g. a phone number checker,
@@ -43,7 +50,6 @@ each current method has drawbacks. Let's imagine a simple user model:
 >   { _firstName    :: Text
 >   , _lastName     :: Text
 >   , _emailAddress :: Text
->   , _phoneNumber  :: PhoneNumber
 >   } deriving Show
 
 We want to check that the first name is not empty and starts with the letter
@@ -104,6 +110,20 @@ hidden, then a User record can only be used in contexts where all the invariants
 which can be inflexible.
 
 
+ ### digestive-functors formlet style ###
+
+digestive-functors solves the multiple validations problem. Our formlet could look like:
+
+> userForm :: (Monad m) => Form Text m User
+> userForm = User
+>   <$>  "firstName"        .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
+>   <*>  "lastName "        .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+>   <*>  "emailAddress"     .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+
+But, how do we handle the email confirmations? Since formlets are applicatives
+and not monadic, it looks like the only we could do it is something like:
+
+> {-
 > instance Monoid User where
 >   mempty = User { _firstName = "", _lastName = "", _emailAddress = "", _phoneNumber = mempty}
 >   mappend = undefined
@@ -138,9 +158,12 @@ which can be inflexible.
 > emailConfirmField :: Text
 > emailConfirmField  = "emailConfirm"
 
+> {-
 > phoneNumberField :: Text
 > phoneNumberField   = "phoneNumber"
+> -}
 
+> {-
 > userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
 > userForm = (,,,,)
 >   <$> firstNameField    .: (text Nothing)
@@ -148,6 +171,7 @@ which can be inflexible.
 >   <*> emailField        .: (text Nothing)
 >   <*> emailConfirmField .: (text Nothing)
 >   <*> phoneNumberField  .: (text Nothing)
+> -}
 
 >--userValidation :: (Text, Text, Text, Text, Text) -> Validation [(Text, Text)] IO User User
 > userValidation (f1, f2, f3,f4, f5) = 
@@ -188,3 +212,4 @@ which can be inflexible.
 > posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]
 > 
 >
+> -}
