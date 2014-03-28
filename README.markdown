@@ -99,20 +99,73 @@ inflexible.
 
 ### digestive-functors formlet style ###
 
-digestive-functors solves the multiple validations problem. Our formlet
-could look like:
+**digestive-functors** solves the multiple validations problem. Our
+formlet could look like:
 
 ``` {.sourceCode .literate .haskell}
 userForm :: (Monad m) => Form Text m User
 userForm = User
-  <$>  "firstName"        .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
-  <*>  "lastName "        .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
-  <*>  "emailAddress"     .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+  <$>  "firstName"    .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
+  <*>  "lastName "    .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+  <*>  "emailAddress" .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
 ```
 
 But, how do we handle the email confirmations? Since formlets are
-applicatives and not monadic, it looks like the only we could do it is
-something like:
+applicatives and not monadic, one way we could do this is by threading
+state through the monad and using validateM, but that's mistake prone,
+and puts unnecessary constraints on our monad. We could intercept the
+View record from **digestive-functors** once the form has been rendered,
+but then we're splitting our validation logic into two different places.
+
+Ideas behind the validation library structure
+---------------------------------------------
+
+[jump to the "hello world" code example](#hello-world)
+
+**validations** is based around 4 different data types. First, a
+*Checker* is function with type
+
+``` {.sourceCode .haskell}
+a -> Either e b
+```
+
+Checkers tend to be non domain model specific, reusable pieces of code.
+For example,
+
+``` {.sourceCode .literate .haskell}
+nonEmpty :: (Monoid a, Eq a) => a -> Either Text a
+nonEmpty x =
+  if (x == mempty)
+     then Left "is empty"
+     else Right x
+```
+
+Notice that a Checker can transform its input as well, which consumer is
+free to ignore. This is useful for turning string typed user input into
+structured data.
+
+A *Monadic Checker* is the same as a checker, but with type
+
+``` {.sourceCode .haskell}
+(Monad m) => a -> m (Either e b)
+```
+
+.
+
+The next data type is a *Validator*. It's a function with type
+
+``` {.sourceCode .haskell}
+a -> monad (Either (errorKey, errorValue) b)
+```
+
+It's very similar to a Monadic Checker, but it also uses an "errorKey"
+type. This allows us to map a validator failure back to some given input
+(e.g. a form input field). If you look at the type signature for a
+Validator, you'll notice that it's very similar to
+
+``` {.sourceCode .haskell}
+a -> m b
+```
 
 ``` {.sourceCode .literate .haskell}
 {-
