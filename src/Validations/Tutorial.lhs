@@ -6,18 +6,19 @@
 > import Prelude hiding ((.))
 > import Validations.Internal.Lens(Lens, lens)
 > import Validations.Adapters.Digestive(validateView, testEnv)
-> import Text.Digestive.Form(Form, text, (.:), validate)
+> import Text.Digestive.Form(Form, text, (.:), validate, validateM)
 > import Text.Digestive.Types(Result(..))
 > import qualified Validations.Checkers.PhoneNumber as VPH
 > import Validations.Types.PhoneNumber (PhoneNumber)
 > import Data.Text(Text, isPrefixOf)
-> import Control.Applicative((<$>), (<*>))
+> import Control.Applicative((<$>), (<*>), (*>))
 > import Text.Digestive.View(View, postForm)
 > import Data.Monoid(Monoid(..), mempty, (<>))
 > import Control.Arrow((>>>))
 > import Control.Monad((>=>))
 > import Validations.Validator(attach)
 > import Validations.Validation(Validation, validation)
+> import Control.Monad.State.Class(MonadState)
 
 
 > eitherToResult x = case x of
@@ -116,13 +117,26 @@ digestive-functors solves the multiple validations problem. Our formlet could lo
 
 > userForm :: (Monad m) => Form Text m User
 > userForm = User
->   <$>  "firstName"        .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
->   <*>  "lastName "        .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
->   <*>  "emailAddress"     .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+>   <$>  "firstName"    .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
+>   <*>  "lastName "    .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
+>   <*>  "emailAddress" .: validate  (notEmpty >>> eitherToResult)                     (text Nothing)
 
 But, how do we handle the email confirmations? Since formlets are applicatives
-and not monadic, it looks like the only we could do it is something like:
+and not monadic, one way we could do this is by threading state through the monad and using validateM
 
+
+> statefulUserForm :: (MonadState s m) => Form Text m User
+> statefulUserForm = User
+>   <$>  "firstName"    .: validate ((notEmpty >=> startsWith "A") >>> eitherToResult) (text Nothing)
+>   <*>  "lastName "    .: validate (notEmpty >>> eitherToResult) (text Nothing)
+>   <*>  ("emailAddress" .: validateM ((notEmpty >>> eitherToResult >>> return)) (text Nothing)
+>    *>  "emailConfirm" .: validateM statefulConfirms (text Nothing))
+
+> willConfirm :: (MonadState s m) => a -> m (Result Text a)
+> willConfirm = undefined
+
+> statefulConfirms :: (MonadState s m) => a -> m (Result Text a)
+> statefulConfirms = undefined
 > {-
 > instance Monoid User where
 >   mempty = User { _firstName = "", _lastName = "", _emailAddress = "", _phoneNumber = mempty}
