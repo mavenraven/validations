@@ -183,7 +183,7 @@ or
 for monadic checkers. Both attach and attachM are included with validations, but you're free
 to wrap any conforming function as the Validator data constructor is public.
 
-The final import data type is a *Validation*. The type of a validations is:
+The final important data type is a *Validation*. The type of a validations is:
 
     state -> monad (newState, errors)
 
