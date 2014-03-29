@@ -140,9 +140,9 @@ nonEmpty x =
      else Right x
 ```
 
-Notice that a Checker can transform its input as well, which consumer is
-free to ignore. This is useful for turning string typed user input into
-structured data.
+. Notice that a Checker can transform its input as well, which consumer
+is free to ignore. This is useful for turning string typed user input
+into structured data.
 
 A *Monadic Checker* is the same as a checker, but with type
 
@@ -167,119 +167,38 @@ Validator, you'll notice that it's very similar to
 a -> m b
 ```
 
-``` {.sourceCode .literate .haskell}
-{-
-instance Monoid User where
-  mempty = User { _firstName = "", _lastName = "", _emailAddress = "", _phoneNumber = mempty}
-  mappend = undefined
+, so it's a [Kleisli
+category](http://www.haskell.org/haskellwiki/Monad_laws), but the Either
+inside doesn't allow us to use Haskell stuff for composing Kleisi
+categories (e.g. (\>=\>). However, we do now how to unwrap and rewrap
+Either, so validations provides an instance of Category to allow for
+validator composition. To create validators, we typically combine either
+a checker with a field name using
+
+``` {.sourceCode .haskell}
+attach :: (Monad m) => Checker ev a b -> ek -> Validator ek ev m a b
 ```
 
-``` {.sourceCode .literate .haskell}
-firstName :: Lens Text User
-firstName = lens _firstName (\s a -> s {_firstName = a})
+or
+
+``` {.sourceCode .haskell}
+attachM :: (Monad m) => MonadicChecker ev m a b -> ek -> Validator ek ev m a b
 ```
 
-``` {.sourceCode .literate .haskell}
-lastName :: Lens Text User
-lastName  = lens _lastName (\s a -> s {_lastName = a})
-```
+for monadic checkers. Both attach and attachM are included with
+validations, but you're free to wrap any conforming function as the
+Validator data constructor is public.
 
-``` {.sourceCode .literate .haskell}
-emailAddress :: Lens Text User
-emailAddress = lens _emailAddress (\s a -> s {_emailAddress = a})
-```
+The final import data type is a *Validation*. The type of a validations
+is:
 
-``` {.sourceCode .literate .haskell}
-phoneNumber2 :: Lens PhoneNumber User
-phoneNumber2 = lens _phoneNumber (\s a -> s {_phoneNumber = a})
-```
+    state -> monad (newState, errors)
 
-``` {.sourceCode .literate .haskell}
-mapLeft :: (a -> c) -> Either a b -> Either c b
-mapLeft f e = case e of
-  Left x -> Left (f x)
-  Right x -> Right x 
-```
+where state is a type like a user record. newState is typically the same
+type as state, but a transformation is allowed. Validations can be
+constructed with
 
-``` {.sourceCode .literate .haskell}
-firstNameField :: Text
-firstNameField     = "firstName"
-```
+    validation :: (Monad m) => Lens b s -> a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
 
-``` {.sourceCode .literate .haskell}
-lastNameField :: Text
-lastNameField      = "lastName"
-```
-
-``` {.sourceCode .literate .haskell}
-emailField :: Text
-emailField         = "email"
-```
-
-``` {.sourceCode .literate .haskell}
-emailConfirmField :: Text
-emailConfirmField  = "emailConfirm"
-```
-
-``` {.sourceCode .literate .haskell}
-{-
-phoneNumberField :: Text
-phoneNumberField   = "phoneNumber"
--}
-```
-
-``` {.sourceCode .literate .haskell}
-{-
-userForm :: (Monad m) => Form Text m (Text,Text,Text,Text,Text)
-userForm = (,,,,)
-  <$> firstNameField    .: (text Nothing)
-  <*> lastNameField     .: (text Nothing)
-  <*> emailField        .: (text Nothing)
-  <*> emailConfirmField .: (text Nothing)
-  <*> phoneNumberField  .: (text Nothing)
--}
-```
-
-``` {.sourceCode .literate .haskell}
---userValidation :: (Text, Text, Text, Text, Text) -> Validation [(Text, Text)] IO User User
- userValidation (f1, f2, f3,f4, f5) = 
-   validation firstName f1 (
-     notEmpty `attach` firstNameField
-   )
-   >>>
-   validation lastName f2 (
-     notEmpty `attach` lastNameField
-   )
-   >>>
-   validation emailAddress f3 (
-     notEmpty        `attach` emailField
-     >>>
-     (f4 `confirms`) `attach` emailConfirmField
-   )
-   >>>
-   validation lastName  f5 (
-     notEmpty `attach` emailConfirmField
-   )
-   >>>
-   validation phoneNumber2 f5 (
-     notEmpty                                                 `attach` phoneNumberField
-     >>>
-     (VPH.phoneNumber  >>> mapLeft (const "bad number"))      `attach` phoneNumberField
-     >>> 
-     (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
- 
-   ) 
-```
-
-``` {.sourceCode .literate .haskell}
-{-
-z :: (Monad m, Monoid v, Monoid t) => (s -> Validation Text v t m a b) -> m (View v, Maybe s) -> m (View v, Maybe t)
-z = validateView
--}
-
-posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text,Text,Text))
-posted = postForm "f" userForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3")]
-
-
--}
-```
+Validations also form a category and can be composed, similar to
+Validators.
