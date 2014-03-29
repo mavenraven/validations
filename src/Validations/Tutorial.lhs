@@ -4,6 +4,7 @@
 > module Validations.Tutorial  where
 
 > import Prelude hiding ((.))
+> import Control.Monad.Identity(Identity)
 > import Validations.Internal.Lens(Lens, lens)
 > import Validations.Adapters.Digestive(validateView, testEnv)
 > import Text.Digestive.Form(Form, text, (.:), validate, validateM)
@@ -17,7 +18,7 @@
 > import Control.Arrow((>>>))
 > import Control.Monad((>=>))
 > import Validations.Validator(attach)
-> import Validations.Validation(Validation, validation)
+> import Validations.Validation(Validation, validation, validation_, runValidation)
 > import Control.Monad.State.Class(MonadState)
 
 
@@ -25,6 +26,9 @@
 >   Left x'  -> Error x'
 >   Right x' -> Success x'
 
+> mapLeft f x = case x of 
+>   Left x'  -> Left $ f x'
+>   Right x' -> Right x'
 
 validations
 ===========
@@ -168,7 +172,7 @@ If you look at the type signature for a Validator, you'll notice that it's very 
 < a -> m b
 
 , so it's a [Kleisli category](http://www.haskell.org/haskellwiki/Monad_laws),
-but the Either inside doesn't allow us to use Haskell stuff for composing Kleisi categories (e.g. (>=>).
+but the Either inside doesn't allow us to use Haskell stuff for composing Kleisi categories (e.g. (>=>)).
 However, we do now how to unwrap and rewrap Either, so validations provides an instance of 
 Category to allow for validator composition. To create validators, we typically combine either a
 checker with a field name using
@@ -193,3 +197,112 @@ a transformation is allowed. Validations can be constructed with
     validation :: (Monad m) => Lens b s -> a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
 
 Validations also form a category and can be composed, similar to Validators.
+
+hello world
+-----------
+
+Let's see the Validators and Validations in action. First, let's define a Account record:
+
+> data Account = Account
+>   { _name   :: Text
+>   , _phoneNumber :: PhoneNumber
+>   } deriving Show
+
+PhoneNumber is a record type included with **validations** that allows access to a phone
+number's exchange, extension, etc. Next, we want to define lenses for accessing and
+mutating the fields. In this example, we are using the internal lens functionality of **validations**,
+but we'd typically use something like [lens](http://hackage.haskell.org/package/lens) in our
+application. 
+
+> name :: Lens Text Account
+> name = lens _name (\s a -> s {_name = a})
+
+
+> phoneNumber :: Lens PhoneNumber Account
+> phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
+
+
+We also want to use digestive-functors to define our form to bring data in.
+
+> nameField        = "name"
+> confirmNameField = "confirmName"
+> phoneNumberField = "phoneNumber"
+
+> accountForm :: (Monad m) => Form Text m (Text, Text, Text)
+> accountForm = (,,)
+>   <$> nameField        .: (text Nothing)
+>   <*> confirmNameField .: (text Nothing)
+>   <*> phoneNumberField .: (text Nothing)
+
+
+We don't use field names directly in our formlet because we need to use
+them in our validation as well. Also, notice that we are outputting a 3-tuple
+instead of a Account record. This is because there isn't a one to one correspondence
+between our input fields and Account record fields (the name confirm field will be discarded).
+So, our validation looks like
+
+> accountValidation :: (Monad m) => (Text, Text, Text) -> Validation [(Text, Text)] m Account Account
+> accountValidation (f1, f2, f3) = 
+>   validation name f1 (
+>     notEmpty        `attach` nameField
+>     >>>
+>     (f2 `confirms`) `attach` confirmNameField
+>   )
+>   >>>
+>   validation phoneNumber f3 (
+>     notEmpty                                                 `attach` phoneNumberField
+>     >>>
+>     (VPH.phoneNumber  >>> mapLeft (const "bad number"))      `attach` phoneNumberField
+>     >>> 
+>     (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
+>   ) 
+
+
+What's going on here? First, since both Validations and Validators are Categories, we
+can use the (>>>) operator from Control.Arrow. If you're unfamiliar with this operator,
+for normal functions, 
+
+< a >>> b ≡ b . a
+
+so you can think of it as a composition operator that reads left to right. 
+
+Next, let's take a look at our first validation. It takes the "f1" parameter passed into "accountValidation"
+and feeds it into "notEmpty". If "notEmpty" returns a "Left", then the validation will make no
+state changes, and add the not empty error message with error key "nameField" to its "errors" value
+(in this case a list of "Text" keys and "Text" values). On the other hand, if "f1" is not empty,
+it will be passed onto the confirms function, where similar validation will happen. If confirms
+also succeeds, the outputted value will passed to the "name" lens, and the outputted state will
+be mutated with a new name value.
+
+Similar behavior will happen in our other validation, but there are two important things to note.
+First, "VPH.phoneNumber" does not simply output "Right f3" on success, but transforms f3 intro a 
+PhoneNumber record as well. Also, we are using mapLeft in this case because the phone number checkers
+that come with **validations** have localized messages, but for simplicity we're just using "Text".
+
+
+ ### Testing ###
+
+Testing a validation is simple. For example,
+
+> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+
+yields
+
+< (Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
+
+> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+
+yields
+
+< (Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
+
+.
+
+> _ = runValidation  (accountValidation ("hi", "bye", "313-333-3334")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+
+yields
+
+< (Account {_name = "", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "", _exchange = "", _suffix = "", _extension = ""}},[("confirmName","fields do not match."),("phoneNumber","needs extension")])
+
+.
+

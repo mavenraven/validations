@@ -3,6 +3,7 @@
 module Validations.Validation
   ( Validation(..)
   , validation
+  , validation_
   , composeValidation
   , composeValidation'
   ) 
@@ -36,3 +37,10 @@ validation lens a (Validator v) =
   \r -> case r of
     Left e  -> return (s, [e])
     Right b -> return (setter lens s b, [])
+
+validation_ :: (Monad m) =>  a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
+validation_ a (Validator v) =
+  Validation $ \s -> v a >>= 
+  \r -> case r of
+    Left e  -> return (s, [e])
+    Right b -> return (s, [])
