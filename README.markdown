@@ -9,9 +9,10 @@ table of contents
 [existing solutions, and their
 problems](#existing-solutions-and-their-problems)
 
-[smart constructors](#smart-constructors)
+    [smart constructors](#smart-constructors)
 
-[digestive-functors formlet style](#digestive-functors-formlet-style)
+    [digestive-functors formlet
+style](#digestive-functors-formlet-style)
 
 [ideas behind the structure of
 "validations"](#ideas-behind-the-structure-of-validations)

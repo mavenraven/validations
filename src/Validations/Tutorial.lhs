@@ -41,9 +41,9 @@ table of contents
 
 [existing solutions, and their problems](#existing-solutions-and-their-problems)
 
-  [smart constructors](#smart-constructors)
+&nbsp;&nbsp;&nbsp;&nbsp;[smart constructors](#smart-constructors)
 
-  [digestive-functors formlet style](#digestive-functors-formlet-style)
+&nbsp;&nbsp;&nbsp;&nbsp;[digestive-functors formlet style](#digestive-functors-formlet-style)
 
 
 [ideas behind the structure of "validations"](#ideas-behind-the-structure-of-validations)
