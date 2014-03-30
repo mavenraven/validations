@@ -33,6 +33,31 @@
 validations
 ===========
 
+table of contents
+-----------------
+
+[what is "validations"?](#what-is-validations)
+
+
+[existing solutions, and their problems](#existing-solutions-and-their-problems)
+
+  [smart constructors](#smart-constructors)
+
+  [digestive-functors formlet style](#digestive-functors-formlet-style)
+
+
+[ideas behind the structure of "validations"](#ideas-behind-the-structure-of-validations)
+
+
+[hello world](#hello-world)
+
+
+[testing](#testing)
+
+
+[digestive-functors integration](#digestive-functors-integration)
+
+
 What is "validations"?
 ----------------------
 
@@ -42,11 +67,8 @@ of a domain model.  It also includes a bunch of useful "checkers"
 that aren't specific to any one domain model (e.g. a phone number checker,
 an email checker, etc.) with localized error messages.
 
-Existing solutions, and their problems
+existing solutions, and their problems
 --------------------------------------
-
-[jump to the "hello world" code example](#hello-world)
-
 
 There is a number of ways to do domain model validation in Haskell, but
 each current method has drawbacks. Let's imagine a simple user model:
@@ -95,7 +117,7 @@ So, our checkers could look something like
 
 .
 
- ### Smart Constructors ###
+ ### smart constructors ###
 
 The simplest way to do this is with a smart constructor:
 
@@ -132,10 +154,8 @@ record from **digestive-functors** once the form has been rendered, but then we'
 logic into two different places.
 
 
-Ideas behind the validation library structure
+ideas behind the structure of "validations"
 ---------------------------------------------
-
-[jump to the "hello world" code example](#hello-world)
 
 **validations** is based around 4 different data types. First, a *Checker* is
 function with type
@@ -280,7 +300,8 @@ PhoneNumber record as well. Also, we are using mapLeft in this case because the 
 that come with **validations** have localized messages, but for simplicity we're just using "Text".
 
 
- ### Testing ###
+testing
+-------
 
 Testing a validation is simple. For example,
 
@@ -288,9 +309,9 @@ Testing a validation is simple. For example,
 
 yields
 
-< (Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
+< Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
 
-> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
 
 yields
 
@@ -306,3 +327,9 @@ yields
 
 .
 
+
+digestive-functors integration
+---------------------------
+
+> posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text))
+> posted = postForm "f" accountForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3"    )]
