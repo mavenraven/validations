@@ -229,7 +229,7 @@ a Account record:
 
 ``` {.sourceCode .literate .haskell}
 data Account = Account
-  { _name   :: Text
+  { _name        :: Text
   , _phoneNumber :: PhoneNumber
   } deriving Show
 ```
@@ -251,8 +251,8 @@ phoneNumber :: Lens PhoneNumber Account
 phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
 ```
 
-We also want to use digestive-functors to define our form to bring data
-in.
+We also want to use **digestive-functors** to define our form to bring
+data in.
 
 ``` {.sourceCode .literate .haskell}
 nameField        = "name"
@@ -307,12 +307,17 @@ right.
 Next, let's take a look at our first validation. It takes the "f1"
 parameter passed into "accountValidation" and feeds it into "notEmpty".
 If "notEmpty" returns a "Left", then the validation will make no state
-changes, and add the not empty error message with error key "nameField"
-to its "errors" value (in this case a list of "Text" keys and "Text"
-values). On the other hand, if "f1" is not empty, it will be passed onto
-the confirms function, where similar validation will happen. If confirms
-also succeeds, the outputted value will passed to the "name" lens, and
-the outputted state will be mutated with a new name value.
+changes, and instead adds
+
+``` {.sourceCode .haskell}
+("name" , "is empty")
+```
+
+to its "errors" value. On the other hand, if "f1" is not empty, it will
+be passed onto the confirms function, where similar validation will
+happen. If confirms also succeeds, the outputted value will passed to
+the "name" lens, and the outputted state will be mutated with a new name
+value.
 
 Similar behavior will happen in our other validation, but there are two
 important things to note. First, "VPH.phoneNumber" does not simply
@@ -340,6 +345,8 @@ Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode 
 _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
 ```
 
+.
+
 yields
 
 ``` {.sourceCode .haskell}
@@ -363,7 +370,17 @@ yields
 digestive-functors integration
 ------------------------------
 
+Integration with **digestive-functors** is also pretty simple. Instead
+of
+
 ``` {.sourceCode .literate .haskell}
 posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text))
-posted = postForm "f" accountForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3"    )]
+posted = postForm "f" accountForm $ testEnv [("f.name", "hello"), ("f.confirmName", "hello"), ("f.phoneNumber", "1(333)333-3333x3")]
+```
+
+add validateView in as well, like
+
+``` {.sourceCode .literate .haskell}
+validatedPosted :: (Monad m) => m (View Text, Maybe Account)
+validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _phoneNumber = mempty }
 ```
