@@ -224,7 +224,7 @@ hello world
 Let's see the Validators and Validations in action. First, let's define a Account record:
 
 > data Account = Account
->   { _name   :: Text
+>   { _name        :: Text
 >   , _phoneNumber :: PhoneNumber
 >   } deriving Show
 
@@ -242,7 +242,7 @@ application.
 > phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
 
 
-We also want to use digestive-functors to define our form to bring data in.
+We also want to use **digestive-functors** to define our form to bring data in.
 
 > nameField        = "name"
 > confirmNameField = "confirmName"
@@ -288,8 +288,11 @@ so you can think of it as a composition operator that reads left to right.
 
 Next, let's take a look at our first validation. It takes the "f1" parameter passed into "accountValidation"
 and feeds it into "notEmpty". If "notEmpty" returns a "Left", then the validation will make no
-state changes, and add the not empty error message with error key "nameField" to its "errors" value
-(in this case a list of "Text" keys and "Text" values). On the other hand, if "f1" is not empty,
+state changes, and instead adds 
+
+< ("name" , "is empty")
+
+to its "errors" value. On the other hand, if "f1" is not empty,
 it will be passed onto the confirms function, where similar validation will happen. If confirms
 also succeeds, the outputted value will passed to the "name" lens, and the outputted state will
 be mutated with a new name value.
@@ -313,6 +316,8 @@ yields
 
 > _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
 
+.
+
 yields
 
 < (Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
@@ -331,5 +336,13 @@ yields
 digestive-functors integration
 ---------------------------
 
+Integration with **digestive-functors** is also pretty simple. Instead of
+
 > posted :: (Monad m) => m (View Text, Maybe (Text,Text,Text))
-> posted = postForm "f" accountForm $ testEnv [("f.firstName", "hello"), ("f.lastName", "world"), ("f.email", "hello@world.com"), ("f.emailConfirm", "hello@world.com"), ("f.phoneNumber", "1(333)333-3333x3"    )]
+> posted = postForm "f" accountForm $ testEnv [("f.name", "hello"), ("f.confirmName", "hello"), ("f.phoneNumber", "1(333)333-3333x3")]
+
+add validateView in as well, like
+
+> validatedPosted :: (Monad m) => m (View Text, Maybe Account)
+> validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _phoneNumber = mempty }
+
