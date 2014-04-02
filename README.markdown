@@ -104,7 +104,7 @@ user firstName lastName emailAddress emailAddressConfirm = do
   firstName'    <- notEmpty firstName >>= startsWith "A"
   lastName'     <- notEmpty lastName
   emailAddress' <- notEmpty emailAddress
-  confirmed     <- emailAddressConfirm `confirms` emailAddress
+  confirmed     <- emailAddressConfirm `confirms` emailAddress'
   return $ User {_firstName = firstName', _lastName = lastName', _emailAddress = confirmed }
 ```
 
@@ -229,16 +229,14 @@ a Account record:
 
 ``` {.sourceCode .literate .haskell}
 data Account = Account
-  { _name        :: Text
-  , _phoneNumber :: PhoneNumber
+  { _name          :: Text
+  , _accountNumber :: Text
   } deriving Show
 ```
 
-PhoneNumber is a record type included with **validations** that allows
-access to a phone number's exchange, extension, etc. Next, we want to
-define lenses for accessing and mutating the fields. In this example, we
-are using the internal lens functionality of **validations**, but we'd
-typically use something like
+Next, we want to define lenses for accessing and mutating the fields. In
+this example, we are using the internal lens functionality of
+**validations**, but we'd typically use something like
 [lens](http://hackage.haskell.org/package/lens) in our application.
 
 ``` {.sourceCode .literate .haskell}
@@ -247,25 +245,34 @@ name = lens _name (\s a -> s {_name = a})
 ```
 
 ``` {.sourceCode .literate .haskell}
-phoneNumber :: Lens PhoneNumber Account
-phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
+accountNumber :: Lens Text Account
+accountNumber = lens _accountNumber (\s a -> s {_accountNumber = a})
 ```
 
 We also want to use **digestive-functors** to define our form to bring
 data in.
 
 ``` {.sourceCode .literate .haskell}
-nameField        = "name"
-confirmNameField = "confirmName"
-phoneNumberField = "phoneNumber"
+nameField :: Text
+nameField          = "name"
+```
+
+``` {.sourceCode .literate .haskell}
+confirmNameField :: Text
+confirmNameField   = "confirmName"
+```
+
+``` {.sourceCode .literate .haskell}
+accountNumberField :: Text
+accountNumberField = "accountNumber"
 ```
 
 ``` {.sourceCode .literate .haskell}
 accountForm :: (Monad m) => Form Text m (Text, Text, Text)
 accountForm = (,,)
-  <$> nameField        .: (text Nothing)
-  <*> confirmNameField .: (text Nothing)
-  <*> phoneNumberField .: (text Nothing)
+  <$> nameField           .: (text Nothing)
+  <*> confirmNameField    .: (text Nothing)
+  <*> accountNumberField  .: (text Nothing)
 ```
 
 We don't use field names directly in our formlet because we need to use
@@ -276,6 +283,13 @@ to one correspondence between our input fields and Account record fields
 like
 
 ``` {.sourceCode .literate .haskell}
+lengthIs :: Int -> Checker Text Text Text
+lengthIs predicate txt = case (compareLength txt predicate) of
+  EQ -> Right txt
+  _  -> Left "account number not correct length"
+```
+
+``` {.sourceCode .literate .haskell}
 accountValidation :: (Monad m) => (Text, Text, Text) -> Validation [(Text, Text)] m Account Account
 accountValidation (f1, f2, f3) = 
   validation name f1 (
@@ -284,12 +298,10 @@ accountValidation (f1, f2, f3) =
     (f2 `confirms`) `attach` confirmNameField
   )
   >>>
-  validation phoneNumber f3 (
-    notEmpty                                                 `attach` phoneNumberField
+  validation accountNumber f3 (
+    notEmpty    `attach` accountNumberField
     >>>
-    (VPH.phoneNumber  >>> mapLeft (const "bad number"))      `attach` phoneNumberField
-    >>> 
-    (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
+    (lengthIs 10) `attach` accountNumberField
   ) 
 ```
 
@@ -319,50 +331,31 @@ happen. If confirms also succeeds, the outputted value will passed to
 the "name" lens, and the outputted state will be mutated with a new name
 value.
 
-Similar behavior will happen in our other validation, but there are two
-important things to note. First, "VPH.phoneNumber" does not simply
-output "Right f3" on success, but transforms f3 intro a PhoneNumber
-record as well. Also, we are using mapLeft in this case because the
-phone number checkers that come with **validations** have localized
-messages, but for simplicity we're just using "Text".
-
 testing
 -------
 
 Testing a validation is simple. For example,
 
 ``` {.sourceCode .literate .haskell}
-_ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+_ = runIdentity $ (runValidation  (accountValidation ("hi", "hi", "1234567890")) Account { _name = "", _accountNumber = "" } :: Identity (Account, [(Text, Text)]))
 ```
 
 yields
 
 ``` {.sourceCode .haskell}
-Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
+(Account {_name = "hi", _accountNumber = "1234567890"},[])
 ```
 
 .
 
 ``` {.sourceCode .literate .haskell}
-_ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
+_ = runIdentity $ (runValidation  (accountValidation ("hi", "bye", "12345678900")) Account { _name = "", _accountNumber = "" } :: Identity (Account, [(Text, Text)]))
 ```
 
 yields
 
 ``` {.sourceCode .haskell}
-(Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
-```
-
-.
-
-``` {.sourceCode .literate .haskell}
-_ = runValidation  (accountValidation ("hi", "bye", "313-333-3334")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
-```
-
-yields
-
-``` {.sourceCode .haskell}
-(Account {_name = "", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "", _exchange = "", _suffix = "", _extension = ""}},[("confirmName","fields do not match."),("phoneNumber","needs extension")])
+(Account {_name = "", _accountNumber = ""},[("confirmName","fields do not match."),("accountNumber","account number not correct length")])
 ```
 
 .
@@ -382,7 +375,7 @@ add validateView in as well, like
 
 ``` {.sourceCode .literate .haskell}
 validatedPosted :: (Monad m) => m (View Text, Maybe Account)
-validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _phoneNumber = mempty }
+validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _accountNumber = "" }
 ```
 
 You can also use validateView' if your domain record has a Monoid
