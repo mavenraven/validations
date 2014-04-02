@@ -39,7 +39,7 @@ validation lens a (Validator v) =
     Right b -> return (setter lens s b, [])
 
 -- | Same as "validation", but throws away validator result. This is useful
--- | for the side effects from a monadic validator.
+--   for the side effects from a monadic validator.
 validation_ :: (Monad m) =>  a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
 validation_ a (Validator v) =
   Validation $ \s -> v a >>= 

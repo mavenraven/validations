@@ -56,11 +56,8 @@ table of contents
 What is "validations"?
 ----------------------
 
-**validations** is a Haskell library that attempts to solve two problems.
-First, it provides a flexible, composable way to define validations
-of a domain model.  It also includes a bunch of useful "checkers"
-that aren't specific to any one domain model (e.g. a phone number checker,
-an email checker, etc.) with localized error messages.
+**validations** is a Haskell library that provides a flexible,
+composable way to define validations of a domain model.
 
 existing solutions, and their problems
 --------------------------------------
@@ -160,7 +157,7 @@ function with type
 Checkers tend to be non domain model specific, reusable pieces of code. For
 example, 
 
-> nonEmpty :: (Monoid a, Eq a) => a -> Either Text a
+> nonEmpty :: (Monoid a, Eq a) => Checker Text a a
 > nonEmpty x =
 >   if (x == mempty)
 >      then Left "is empty"

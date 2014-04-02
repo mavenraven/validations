@@ -2,15 +2,16 @@
 -- For further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                validations
-version:             0.1.0.0
-synopsis:            Active Record like validations for digestive-functors
--- description:         
-homepage:            https://hackage.haskell.org/package/validations
+version:             0.1.0.1
+synopsis:            A nice way to define field validations in Haskell.
+description:         See <https://github.com/mavenraven/validations> for description and tutorial.
+                     Code used in the tutorial can be found in src\/Validations\/Tutorial.lhs.
+homepage:            https://github.com/mavenraven/validations
 license:             BSD3
 license-file:        LICENSE
 author:              mavenraven.org
 maintainer:          developers@mavenraven.org
--- copyright:           
+copyright:           http://mavenraven.org
 category:            Web
 build-type:          Simple
 -- extra-source-files:  
@@ -19,6 +20,14 @@ cabal-version:       >=1.10
 Library
   exposed-modules:     
       Validations
+      Validations.Adapters
+      Validations.Adapters.Digestive
+      Validations.Internal
+      Validations.Internal.Lens
+      Validations.Types
+      Validations.Types.Checker
+      Validations.Validation
+      Validations.Validator
       Validations.Tutorial
   -- other-modules:       
   -- other-extensions:    
@@ -32,7 +41,7 @@ Library
 
   default-language:    Haskell2010
   Hs-source-dirs: src
-  Ghc-options:    -Wall -Werror -fwarn-tabs -fno-warn-unused-do-bind
+  Ghc-options:    -Wall -fwarn-tabs -fno-warn-unused-do-bind
 
 Test-suite digestive-functors-validations-tests
   Type:           exitcode-stdio-1.0
