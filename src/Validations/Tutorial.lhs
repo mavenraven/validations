@@ -314,9 +314,9 @@ yields
 
 < Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
 
-> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
-
 .
+
+> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
 
 yields
 
@@ -346,3 +346,4 @@ add validateView in as well, like
 > validatedPosted :: (Monad m) => m (View Text, Maybe Account)
 > validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _phoneNumber = mempty }
 
+You can also use validateView' if your domain record has a Monoid instance.
