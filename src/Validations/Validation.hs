@@ -13,7 +13,7 @@ import Prelude hiding ((.))
 import Validations.Internal.Lens(Lens, setter)
 import Data.Monoid(Monoid, (<>), mempty)
 import Control.Category(Category(..))
-import Validations.Validator(Validator(..), runValidator)
+import Validations.Validator(Validator(..))
 
 newtype Validation errors monad state newState = Validation { runValidation :: state -> monad (newState, errors) } 
  
@@ -38,9 +38,11 @@ validation lens a (Validator v) =
     Left e  -> return (s, [e])
     Right b -> return (setter lens s b, [])
 
+-- | Same as "validation", but throws away validator result. This is useful
+-- | for the side effects from a monadic validator.
 validation_ :: (Monad m) =>  a -> Validator ek ev m a b -> Validation [(ek,ev)] m s s
 validation_ a (Validator v) =
   Validation $ \s -> v a >>= 
   \r -> case r of
     Left e  -> return (s, [e])
-    Right b -> return (s, [])
+    Right _ -> return (s, [])

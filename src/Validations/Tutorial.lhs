@@ -4,31 +4,26 @@
 > module Validations.Tutorial  where
 
 > import Prelude hiding ((.))
-> import Control.Monad.Identity(Identity)
+> import Control.Monad.Identity(Identity, runIdentity)
 > import Validations.Internal.Lens(Lens, lens)
 > import Validations.Adapters.Digestive(validateView, testEnv)
-> import Text.Digestive.Form(Form, text, (.:), validate, validateM)
+> import Text.Digestive.Form(Form, text, (.:), validate)
 > import Text.Digestive.Types(Result(..))
-> import qualified Validations.Checkers.PhoneNumber as VPH
-> import Validations.Types.PhoneNumber (PhoneNumber)
-> import Data.Text(Text, isPrefixOf)
-> import Control.Applicative((<$>), (<*>), (*>))
+> import Validations.Types(Checker)
+> import Data.Text(Text, isPrefixOf, compareLength)
+> import Control.Applicative((<$>), (<*>))
 > import Text.Digestive.View(View, postForm)
 > import Data.Monoid(Monoid(..), mempty, (<>))
 > import Control.Arrow((>>>))
 > import Control.Monad((>=>))
 > import Validations.Validator(attach)
-> import Validations.Validation(Validation, validation, validation_, runValidation)
-> import Control.Monad.State.Class(MonadState)
+> import Validations.Validation(Validation, validation, runValidation)
 
 
+> eitherToResult :: Either a b -> Result a b
 > eitherToResult x = case x of
 >   Left x'  -> Error x'
 >   Right x' -> Success x'
-
-> mapLeft f x = case x of 
->   Left x'  -> Left $ f x'
->   Right x' -> Right x'
 
 validations
 ===========
@@ -126,7 +121,7 @@ The simplest way to do this is with a smart constructor:
 >   firstName'    <- notEmpty firstName >>= startsWith "A"
 >   lastName'     <- notEmpty lastName
 >   emailAddress' <- notEmpty emailAddress
->   confirmed     <- emailAddressConfirm `confirms` emailAddress
+>   confirmed     <- emailAddressConfirm `confirms` emailAddress'
 >   return $ User {_firstName = firstName', _lastName = lastName', _emailAddress = confirmed }
 
 This will enforce all of our invariants, but there's a problem. If any of our validations
@@ -224,12 +219,11 @@ hello world
 Let's see the Validators and Validations in action. First, let's define a Account record:
 
 > data Account = Account
->   { _name        :: Text
->   , _phoneNumber :: PhoneNumber
+>   { _name          :: Text
+>   , _accountNumber :: Text
 >   } deriving Show
 
-PhoneNumber is a record type included with **validations** that allows access to a phone
-number's exchange, extension, etc. Next, we want to define lenses for accessing and
+Next, we want to define lenses for accessing and
 mutating the fields. In this example, we are using the internal lens functionality of **validations**,
 but we'd typically use something like [lens](http://hackage.haskell.org/package/lens) in our
 application. 
@@ -238,21 +232,25 @@ application.
 > name = lens _name (\s a -> s {_name = a})
 
 
-> phoneNumber :: Lens PhoneNumber Account
-> phoneNumber = lens _phoneNumber (\s a -> s {_phoneNumber = a})
-
+> accountNumber :: Lens Text Account
+> accountNumber = lens _accountNumber (\s a -> s {_accountNumber = a})
 
 We also want to use **digestive-functors** to define our form to bring data in.
 
-> nameField        = "name"
-> confirmNameField = "confirmName"
-> phoneNumberField = "phoneNumber"
+> nameField :: Text
+> nameField          = "name"
+
+> confirmNameField :: Text
+> confirmNameField   = "confirmName"
+
+> accountNumberField :: Text
+> accountNumberField = "accountNumber"
 
 > accountForm :: (Monad m) => Form Text m (Text, Text, Text)
 > accountForm = (,,)
->   <$> nameField        .: (text Nothing)
->   <*> confirmNameField .: (text Nothing)
->   <*> phoneNumberField .: (text Nothing)
+>   <$> nameField           .: (text Nothing)
+>   <*> confirmNameField    .: (text Nothing)
+>   <*> accountNumberField  .: (text Nothing)
 
 
 We don't use field names directly in our formlet because we need to use
@@ -260,6 +258,11 @@ them in our validation as well. Also, notice that we are outputting a 3-tuple
 instead of a Account record. This is because there isn't a one to one correspondence
 between our input fields and Account record fields (the name confirm field will be discarded).
 So, our validation looks like
+
+> lengthIs :: Int -> Checker Text Text Text
+> lengthIs predicate txt = case (compareLength txt predicate) of
+>   EQ -> Right txt
+>   _  -> Left "account number not correct length"
 
 > accountValidation :: (Monad m) => (Text, Text, Text) -> Validation [(Text, Text)] m Account Account
 > accountValidation (f1, f2, f3) = 
@@ -269,12 +272,10 @@ So, our validation looks like
 >     (f2 `confirms`) `attach` confirmNameField
 >   )
 >   >>>
->   validation phoneNumber f3 (
->     notEmpty                                                 `attach` phoneNumberField
+>   validation accountNumber f3 (
+>     notEmpty    `attach` accountNumberField
 >     >>>
->     (VPH.phoneNumber  >>> mapLeft (const "bad number"))      `attach` phoneNumberField
->     >>> 
->     (VPH.hasExtension >>> mapLeft (const "needs extension")) `attach` phoneNumberField
+>     (lengthIs 10) `attach` accountNumberField
 >   ) 
 
 
@@ -297,38 +298,24 @@ it will be passed onto the confirms function, where similar validation will happ
 also succeeds, the outputted value will passed to the "name" lens, and the outputted state will
 be mutated with a new name value.
 
-Similar behavior will happen in our other validation, but there are two important things to note.
-First, "VPH.phoneNumber" does not simply output "Right f3" on success, but transforms f3 intro a 
-PhoneNumber record as well. Also, we are using mapLeft in this case because the phone number checkers
-that come with **validations** have localized messages, but for simplicity we're just using "Text".
-
-
 testing
 -------
 
 Testing a validation is simple. For example,
 
-> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
+> _ = runIdentity $ (runValidation  (accountValidation ("hi", "hi", "1234567890")) Account { _name = "", _accountNumber = "" } :: Identity (Account, [(Text, Text)]))
 
 yields
 
-< Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
+< (Account {_name = "hi", _accountNumber = "1234567890"},[])
 
 .
 
-> _ = runValidation  (accountValidation ("hi", "hi", "313-333-3334x33")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)]) --_
+> _ = runIdentity $ (runValidation  (accountValidation ("hi", "bye", "12345678900")) Account { _name = "", _accountNumber = "" } :: Identity (Account, [(Text, Text)]))
 
 yields
 
-< (Account {_name = "hi", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "313", _exchange = "333", _suffix = "3334", _extension = "33"}},[])
-
-.
-
-> _ = runValidation  (accountValidation ("hi", "bye", "313-333-3334")) Account { _name = "", _phoneNumber = mempty } :: Identity (Account, [(Text, Text)])
-
-yields
-
-< (Account {_name = "", _phoneNumber = PhoneNumber {_countryCode = "", _areaCode = "", _exchange = "", _suffix = "", _extension = ""}},[("confirmName","fields do not match."),("phoneNumber","needs extension")])
+< (Account {_name = "", _accountNumber = ""},[("confirmName","fields do not match."),("accountNumber","account number not correct length")])
 
 .
 
@@ -344,6 +331,7 @@ Integration with **digestive-functors** is also pretty simple. Instead of
 add validateView in as well, like
 
 > validatedPosted :: (Monad m) => m (View Text, Maybe Account)
-> validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _phoneNumber = mempty }
+> validatedPosted =  posted >>= validateView accountValidation Account { _name = "", _accountNumber = "" }
 
 You can also use validateView' if your domain record has a Monoid instance.
+
