@@ -2,7 +2,7 @@
 -- For further documentation, see http://haskell.org/cabal/users-guide/
 
 name:                validations
-version:             0.1.0.1
+version:             0.1.0.2
 synopsis:            A nice way to define field validations in Haskell.
 description:         See <https://github.com/mavenraven/validations> for description and tutorial.
                      Code used in the tutorial can be found in src\/Validations\/Tutorial.lhs.
@@ -32,7 +32,7 @@ Library
   -- other-modules:       
   -- other-extensions:    
   build-depends:
-    base               >= 4.6      && <4.7,
+    base               >= 4.6      && <4.8,
     digestive-functors >= 0.7      && < 0.8,
     text               >= 1.0.0.1  && < 1.2,
     containers         >= 0.5.0    && < 0.6,
